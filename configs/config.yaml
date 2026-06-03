@@ -1,0 +1,5 @@
+app:
+  port: 8080
+
+mysql:
+  dsn: root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local
