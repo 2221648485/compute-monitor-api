@@ -2,13 +2,15 @@ package student
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 var ErrStudentNotFound = errors.New("student not found")
 
+// Service contains student business logic.
 type Service struct {
 	repository Repository
 }
@@ -29,7 +31,7 @@ func (s *Service) Create(ctx context.Context, req CreateStudentRequest) (Student
 
 func (s *Service) GetByID(ctx context.Context, id int64) (Student, error) {
 	student, err := s.repository.FindByID(ctx, id)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return Student{}, ErrStudentNotFound
 	}
 	if err != nil {

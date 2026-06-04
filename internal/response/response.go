@@ -14,7 +14,7 @@ type Body struct {
 
 func OK(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, Body{
-		Code:    http.StatusOK,
+		Code:    0,
 		Message: "success",
 		Data:    data,
 	})
@@ -22,7 +22,7 @@ func OK(c *gin.Context, data interface{}) {
 
 func Created(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusCreated, Body{
-		Code:    http.StatusCreated,
+		Code:    0,
 		Message: "created",
 		Data:    data,
 	})

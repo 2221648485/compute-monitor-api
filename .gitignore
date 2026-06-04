@@ -1,0 +1,27 @@
+﻿# Build output
+tmp/
+bin/
+dist/
+*.exe
+*.test
+*.out
+
+# Local config and secrets
+.env
+.env.*
+!.env.example
+configs/*.local.yaml
+configs/*kubeconfig*.yaml
+configs/*secret*.yaml
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Dependency/cache directories
+vendor/

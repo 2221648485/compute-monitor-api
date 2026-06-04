@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Handler handles student HTTP requests.
 type Handler struct {
 	service *Service
 }

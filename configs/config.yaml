@@ -3,3 +3,5 @@ app:
 
 mysql:
   dsn: root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local
+  max_open_conns: 20
+  max_idle_conns: 10
