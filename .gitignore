@@ -2,6 +2,7 @@
 tmp/
 bin/
 dist/
+deploy/
 *.exe
 *.test
 *.out
@@ -9,7 +10,6 @@ dist/
 # Local config and secrets
 .env
 .env.*
-!.env.example
 configs/*.local.yaml
 configs/*kubeconfig*.yaml
 configs/*secret*.yaml

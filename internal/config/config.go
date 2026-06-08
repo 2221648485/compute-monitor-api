@@ -2,11 +2,14 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/viper"
 )
+
+const defaultEnv = "dev"
 
 type Config struct {
 	App      AppConfig      `mapstructure:"app"`
@@ -14,6 +17,7 @@ type Config struct {
 }
 
 type AppConfig struct {
+	Env  string `mapstructure:"env"`
 	Port string `mapstructure:"port"`
 }
 
@@ -24,13 +28,33 @@ type DatabaseConfig struct {
 }
 
 func Load() Config {
-	cfg, err := LoadFromFile("configs/config.yaml")
+	cfg, err := LoadFromFile(ConfigFilePath(Env()))
 	if err != nil {
-		// 启动阶段不因为配置文件缺失直接崩溃；保底配置方便本地先跑通服务。
 		return defaultConfig()
 	}
 
 	return cfg
+}
+
+func Env() string {
+	env := strings.TrimSpace(os.Getenv("APP_ENV"))
+	if env == "" {
+		env = strings.TrimSpace(os.Getenv("GO_ENV"))
+	}
+	if env == "" {
+		return defaultEnv
+	}
+
+	return strings.ToLower(env)
+}
+
+func ConfigFilePath(env string) string {
+	env = strings.TrimSpace(strings.ToLower(env))
+	if env == "" {
+		env = defaultEnv
+	}
+
+	return fmt.Sprintf("configs/config.%s.yaml", env)
 }
 
 func LoadFromFile(path string) (Config, error) {
@@ -56,32 +80,21 @@ func newViper() *viper.Viper {
 	v := viper.New()
 	v.SetConfigType("yaml")
 
-	// 默认值用于本地快速启动；正式部署建议在 configs/config.yaml 或环境变量中显式配置。
+	v.SetDefault("app.env", defaultEnv)
 	v.SetDefault("app.port", "8080")
 	v.SetDefault("mysql.dsn", "root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local")
 	v.SetDefault("mysql.max_open_conns", 20)
 	v.SetDefault("mysql.max_idle_conns", 10)
 
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
-
-	bindEnv(v, "app.port", "APP_PORT")
-	bindEnv(v, "mysql.dsn", "MYSQL_DSN")
-	bindEnv(v, "mysql.max_open_conns", "MYSQL_MAX_OPEN_CONNS")
-	bindEnv(v, "mysql.max_idle_conns", "MYSQL_MAX_IDLE_CONNS")
-
 	return v
-}
-
-func bindEnv(v *viper.Viper, key string, env string) {
-	if err := v.BindEnv(key, env); err != nil {
-		panic(err)
-	}
 }
 
 func defaultConfig() Config {
 	return Config{
-		App: AppConfig{Port: "8080"},
+		App: AppConfig{
+			Env:  defaultEnv,
+			Port: "8080",
+		},
 		Database: DatabaseConfig{
 			DSN:          "root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local",
 			MaxOpenConns: 20,

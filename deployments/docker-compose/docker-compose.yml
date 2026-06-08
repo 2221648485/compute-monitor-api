@@ -1,0 +1,43 @@
+services:
+  compute-monitor-api:
+    image: compute-monitor-api:1.0.0
+    container_name: compute-monitor-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: dev
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - compute-monitor-net
+
+  mysql:
+    image: mysql:8.0.36
+    container_name: compute-monitor-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: compute_monitor_dev
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - compute-monitor-mysql-data:/var/lib/mysql
+    networks:
+      - compute-monitor-net
+
+networks:
+  compute-monitor-net:
+    driver: bridge
+
+volumes:
+  compute-monitor-mysql-data:
