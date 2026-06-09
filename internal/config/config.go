@@ -14,6 +14,7 @@ const defaultEnv = "dev"
 type Config struct {
 	App      AppConfig      `mapstructure:"app"`
 	Database DatabaseConfig `mapstructure:"mysql"`
+	Auth     AuthConfig     `mapstructure:"auth"`
 }
 
 type AppConfig struct {
@@ -25,6 +26,16 @@ type DatabaseConfig struct {
 	DSN          string `mapstructure:"dsn"`
 	MaxOpenConns int    `mapstructure:"max_open_conns"`
 	MaxIdleConns int    `mapstructure:"max_idle_conns"`
+}
+
+type AuthConfig struct {
+	JWT JWTConfig `mapstructure:"jwt"`
+}
+
+type JWTConfig struct {
+	Secret                string `mapstructure:"secret"`
+	Issuer                string `mapstructure:"issuer"`
+	AccessTokenTTLSeconds int64  `mapstructure:"access_token_ttl_seconds"`
 }
 
 func Load() Config {
@@ -85,6 +96,9 @@ func newViper() *viper.Viper {
 	v.SetDefault("mysql.dsn", "root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local")
 	v.SetDefault("mysql.max_open_conns", 20)
 	v.SetDefault("mysql.max_idle_conns", 10)
+	v.SetDefault("auth.jwt.secret", "change-me")
+	v.SetDefault("auth.jwt.issuer", "compute-monitor-api")
+	v.SetDefault("auth.jwt.access_token_ttl_seconds", 7200)
 
 	return v
 }
@@ -99,6 +113,13 @@ func defaultConfig() Config {
 			DSN:          "root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local",
 			MaxOpenConns: 20,
 			MaxIdleConns: 10,
+		},
+		Auth: AuthConfig{
+			JWT: JWTConfig{
+				Secret:                "change-me",
+				Issuer:                "compute-monitor-api",
+				AccessTokenTTLSeconds: 7200,
+			},
 		},
 	}
 }

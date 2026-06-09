@@ -6,3 +6,9 @@ mysql:
   dsn: app_user:change_me@tcp(mysql:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local
   max_open_conns: 100
   max_idle_conns: 20
+
+auth:
+  jwt:
+    secret: change-this-prod-secret
+    issuer: compute-monitor-api
+    access_token_ttl_seconds: 7200

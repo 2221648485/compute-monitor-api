@@ -6,3 +6,9 @@ mysql:
   dsn: root:123456@tcp(127.0.0.1:3306)/compute_monitor_test?charset=utf8mb4&parseTime=True&loc=Local
   max_open_conns: 10
   max_idle_conns: 5
+
+auth:
+  jwt:
+    secret: test-compute-monitor-secret
+    issuer: compute-monitor-api
+    access_token_ttl_seconds: 3600
