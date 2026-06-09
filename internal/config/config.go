@@ -29,13 +29,24 @@ type DatabaseConfig struct {
 }
 
 type AuthConfig struct {
-	JWT JWTConfig `mapstructure:"jwt"`
+	JWT            JWTConfig            `mapstructure:"jwt"`
+	BootstrapAdmin BootstrapAdminConfig `mapstructure:"bootstrap_admin"`
 }
 
 type JWTConfig struct {
 	Secret                string `mapstructure:"secret"`
 	Issuer                string `mapstructure:"issuer"`
 	AccessTokenTTLSeconds int64  `mapstructure:"access_token_ttl_seconds"`
+}
+
+type BootstrapAdminConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	Username    string `mapstructure:"username"`
+	Password    string `mapstructure:"password"`
+	DisplayName string `mapstructure:"display_name"`
+	Email       string `mapstructure:"email"`
+	Role        string `mapstructure:"role"`
+	Status      int    `mapstructure:"status"`
 }
 
 func Load() Config {
@@ -99,6 +110,13 @@ func newViper() *viper.Viper {
 	v.SetDefault("auth.jwt.secret", "change-me")
 	v.SetDefault("auth.jwt.issuer", "compute-monitor-api")
 	v.SetDefault("auth.jwt.access_token_ttl_seconds", 7200)
+	v.SetDefault("auth.bootstrap_admin.enabled", true)
+	v.SetDefault("auth.bootstrap_admin.username", "admin")
+	v.SetDefault("auth.bootstrap_admin.password", "Admin@123456")
+	v.SetDefault("auth.bootstrap_admin.display_name", "系统管理员")
+	v.SetDefault("auth.bootstrap_admin.email", "")
+	v.SetDefault("auth.bootstrap_admin.role", "admin")
+	v.SetDefault("auth.bootstrap_admin.status", 1)
 
 	return v
 }
@@ -119,6 +137,14 @@ func defaultConfig() Config {
 				Secret:                "change-me",
 				Issuer:                "compute-monitor-api",
 				AccessTokenTTLSeconds: 7200,
+			},
+			BootstrapAdmin: BootstrapAdminConfig{
+				Enabled:     true,
+				Username:    "admin",
+				Password:    "Admin@123456",
+				DisplayName: "系统管理员",
+				Role:        "admin",
+				Status:      1,
 			},
 		},
 	}

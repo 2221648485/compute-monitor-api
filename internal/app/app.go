@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -71,6 +73,17 @@ func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB) {
 
 	userRepository := user.NewMySQLRepository(db)
 	passwordHasher := auth.NewPasswordHasher()
+	if err := user.EnsureBootstrapAdmin(context.Background(), userRepository, passwordHasher, user.BootstrapAdminOptions{
+		Enabled:     cfg.Auth.BootstrapAdmin.Enabled,
+		Username:    cfg.Auth.BootstrapAdmin.Username,
+		Password:    cfg.Auth.BootstrapAdmin.Password,
+		DisplayName: cfg.Auth.BootstrapAdmin.DisplayName,
+		Email:       cfg.Auth.BootstrapAdmin.Email,
+		Role:        cfg.Auth.BootstrapAdmin.Role,
+		Status:      cfg.Auth.BootstrapAdmin.Status,
+	}); err != nil {
+		log.Printf("bootstrap admin skipped: %v", err)
+	}
 
 	authService := auth.NewService(userRepository, passwordHasher, tokenManager)
 	authHandler := auth.NewHandler(authService)

@@ -12,3 +12,11 @@ auth:
     secret: change-this-prod-secret
     issuer: compute-monitor-api
     access_token_ttl_seconds: 7200
+  bootstrap_admin:
+    enabled: false
+    username: admin
+    password: change-this-before-enable
+    display_name: 系统管理员
+    email: admin@example.com
+    role: admin
+    status: 1

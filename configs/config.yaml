@@ -12,3 +12,11 @@ auth:
     secret: dev-compute-monitor-secret
     issuer: compute-monitor-api
     access_token_ttl_seconds: 7200
+  bootstrap_admin:
+    enabled: true
+    username: admin
+    password: Admin@123456
+    display_name: 系统管理员
+    email: admin@example.com
+    role: admin
+    status: 1

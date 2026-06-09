@@ -31,6 +31,9 @@ func main() {
 		log.Printf("mysql init failed, database api will not be available: %v", err)
 	}
 	if db != nil {
+		if err := mysql.Migrate(db); err != nil {
+			log.Fatalf("mysql migrate failed: %v", err)
+		}
 		defer func() {
 			if err := mysql.Close(db); err != nil {
 				log.Printf("mysql close failed: %v", err)
