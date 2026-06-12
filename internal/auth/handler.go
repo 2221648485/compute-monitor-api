@@ -2,8 +2,10 @@ package auth
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
+	"compute-monitor-api/internal/requestctx"
 	"compute-monitor-api/internal/response"
 
 	"github.com/gin-gonic/gin"
@@ -58,7 +60,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Failure 500 {object} response.Body
 // @Router /api/admin/auth/me [get]
 func (h *Handler) GetCurrentUser(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	userID, ok := requestctx.CurrentUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, response.Body{Code: http.StatusUnauthorized, Message: ErrorMessage(ErrTokenInvalid)})
 		return
@@ -70,6 +72,30 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 		return
 	}
 
+	response.OK(c, result)
+}
+
+// RefreshToken 刷新当前登录用户 token。
+//
+// @Summary 刷新 token
+// @Tags 认证
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.Body
+// @Failure 401 {object} response.Body
+// @Failure 500 {object} response.Body
+// @Router /api/admin/auth/refresh [post]
+func (h *Handler) RefreshToken(c *gin.Context) {
+	userID, ok := requestctx.CurrentUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, response.Body{Code: http.StatusUnauthorized, Message: ErrorMessage(ErrTokenInvalid)})
+		return
+	}
+	result, err := h.service.RefreshToken(c.Request.Context(), userID)
+	if err != nil {
+		writeAuthError(c, err)
+		return
+	}
 	response.OK(c, result)
 }
 
@@ -87,7 +113,7 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 // @Failure 500 {object} response.Body
 // @Router /api/admin/auth/password [put]
 func (h *Handler) ChangePassword(c *gin.Context) {
-	userID, ok := currentUserID(c)
+	userID, ok := requestctx.CurrentUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, response.Body{Code: http.StatusUnauthorized, Message: ErrorMessage(ErrTokenInvalid)})
 		return
@@ -114,15 +140,7 @@ func writeAuthError(c *gin.Context, err error) {
 	case IsAuthError(err):
 		response.BadRequest(c, ErrorMessage(err))
 	default:
+		log.Printf("authentication request failed: %v", err)
 		response.InternalServerError(c, "authentication request failed")
 	}
-}
-
-func currentUserID(c *gin.Context) (int64, bool) {
-	value, exists := c.Get("user_id")
-	if !exists {
-		return 0, false
-	}
-	userID, ok := value.(int64)
-	return userID, ok
 }

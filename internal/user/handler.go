@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"compute-monitor-api/internal/requestctx"
 	"compute-monitor-api/internal/response"
 
 	"github.com/gin-gonic/gin"
@@ -165,7 +166,7 @@ func (h *Handler) UpdateStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
-	currentUserID, _ := currentUserID(c)
+	currentUserID, _ := requestctx.CurrentUserID(c)
 
 	var req UpdateUserStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -223,15 +224,6 @@ func parseUserID(c *gin.Context) (int64, bool) {
 		return 0, false
 	}
 	return id, true
-}
-
-func currentUserID(c *gin.Context) (int64, bool) {
-	value, exists := c.Get("user_id")
-	if !exists {
-		return 0, false
-	}
-	userID, ok := value.(int64)
-	return userID, ok
 }
 
 func writeUserError(c *gin.Context, err error) {

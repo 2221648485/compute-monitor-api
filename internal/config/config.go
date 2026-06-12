@@ -49,6 +49,16 @@ type BootstrapAdminConfig struct {
 	Status      int    `mapstructure:"status"`
 }
 
+type K8sConfig struct {
+	Mode           string `mapstructure:"mode"`
+	ApiServer      string `mapstructure:"api_server"`
+	KubeconfigPath string `mapstructure:"kubeconfig_path"`
+}
+
+type PrometheusConfig struct {
+	BaseURL string `mapstructure:"base_url"`
+}
+
 func Load() Config {
 	cfg, err := LoadFromFile(ConfigFilePath(Env()))
 	if err != nil {

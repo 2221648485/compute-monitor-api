@@ -114,3 +114,26 @@ func (s *Service) writeLoginLog(ctx context.Context, userID int64, username stri
 		Reason:    reason,
 	})
 }
+
+func (s *Service) RefreshToken(ctx context.Context, userID int64) (RefreshTokenResponse, error) {
+	user, err := s.repository.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, userpkg.ErrUserNotFound) {
+			return RefreshTokenResponse{}, ErrInvalidCredential
+		}
+		return RefreshTokenResponse{}, err
+	}
+	if !user.IsEnabled() {
+		return RefreshTokenResponse{}, ErrUserDisabled
+	}
+
+	token, expiresIn, err := s.tokenManager.Generate(ctx, user)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+	return RefreshTokenResponse{
+		AccessToken: token,
+		TokenType:   "Bearer",
+		ExpiresIn:   expiresIn,
+	}, nil
+}

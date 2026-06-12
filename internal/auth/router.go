@@ -8,4 +8,5 @@ func RegisterRoutes(publicAPI gin.IRouter, privateAPI gin.IRouter, handler *Hand
 
 	privateAPI.GET("/auth/me", handler.GetCurrentUser)
 	privateAPI.PUT("/auth/password", handler.ChangePassword)
+	privateAPI.POST("/auth/refresh", handler.RefreshToken)
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"compute-monitor-api/internal/auth"
+	"compute-monitor-api/internal/requestctx"
 	"compute-monitor-api/internal/response"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +13,11 @@ import (
 
 const (
 	// ContextUserIDKey 是 gin.Context 中保存当前用户 ID 的 key。
-	ContextUserIDKey = "user_id"
+	ContextUserIDKey = requestctx.UserIDKey
 	// ContextUsernameKey 是 gin.Context 中保存当前用户名的 key。
-	ContextUsernameKey = "username"
+	ContextUsernameKey = requestctx.UsernameKey
 	// ContextRoleKey 是 gin.Context 中保存当前用户角色的 key。
-	ContextRoleKey = "role"
+	ContextRoleKey = requestctx.RoleKey
 )
 
 // Auth 校验 Authorization: Bearer <token>，并把用户身份写入上下文。
@@ -74,32 +75,17 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 
 // CurrentUserID 从 gin.Context 中读取当前用户 ID。
 func CurrentUserID(c *gin.Context) (int64, bool) {
-	value, exists := c.Get(ContextUserIDKey)
-	if !exists {
-		return 0, false
-	}
-	userID, ok := value.(int64)
-	return userID, ok
+	return requestctx.CurrentUserID(c)
 }
 
 // CurrentUsername 从 gin.Context 中读取当前用户名。
 func CurrentUsername(c *gin.Context) (string, bool) {
-	value, exists := c.Get(ContextUsernameKey)
-	if !exists {
-		return "", false
-	}
-	username, ok := value.(string)
-	return username, ok
+	return requestctx.CurrentUsername(c)
 }
 
 // CurrentRole 从 gin.Context 中读取当前用户角色。
 func CurrentRole(c *gin.Context) (string, bool) {
-	value, exists := c.Get(ContextRoleKey)
-	if !exists {
-		return "", false
-	}
-	role, ok := value.(string)
-	return role, ok
+	return requestctx.CurrentRole(c)
 }
 
 func bearerToken(authorization string) string {

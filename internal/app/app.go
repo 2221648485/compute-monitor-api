@@ -8,6 +8,7 @@ import (
 
 	_ "compute-monitor-api/docs/swagger"
 	"compute-monitor-api/internal/auth"
+	"compute-monitor-api/internal/cluster"
 	"compute-monitor-api/internal/compat"
 	"compute-monitor-api/internal/config"
 	"compute-monitor-api/internal/middleware"
@@ -65,15 +66,48 @@ func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB) {
 		return
 	}
 
-	tokenManager := auth.NewTokenManager(auth.TokenOptions{
-		Secret:         cfg.Auth.JWT.Secret,
-		Issuer:         cfg.Auth.JWT.Issuer,
-		AccessTokenTTL: time.Duration(cfg.Auth.JWT.AccessTokenTTLSeconds) * time.Second,
-	})
+	ensureBootstrapAdmin(cfg, db)
 
-	userRepository := user.NewMySQLRepository(db)
+	// publicAPI 放不需要登录的接口，例如登录。
+	publicAPI := api
+
+	// privateAPI 挂载鉴权中间件，后续后台管理接口默认放在这里。
+	privateAPI := api.Group("")
+	privateAPI.Use(middleware.Auth(newTokenManager(cfg)))
+
+	registerAuthModule(publicAPI, privateAPI, cfg, db)
+	registerUserModule(privateAPI, db)
+	registerClusterModule(privateAPI, db)
+}
+
+func registerAuthModule(publicAPI gin.IRouter, privateAPI gin.IRouter, cfg config.Config, db *gorm.DB) {
+	repository := user.NewMySQLRepository(db)
 	passwordHasher := auth.NewPasswordHasher()
-	if err := user.EnsureBootstrapAdmin(context.Background(), userRepository, passwordHasher, user.BootstrapAdminOptions{
+	tokenManager := newTokenManager(cfg)
+	service := auth.NewService(repository, passwordHasher, tokenManager)
+	handler := auth.NewHandler(service)
+	auth.RegisterRoutes(publicAPI, privateAPI, handler)
+}
+
+func registerUserModule(api gin.IRouter, db *gorm.DB) {
+	repository := user.NewMySQLRepository(db)
+	passwordHasher := auth.NewPasswordHasher()
+	service := user.NewService(repository, passwordHasher)
+	handler := user.NewHandler(service)
+	user.RegisterRoutes(api, handler)
+}
+
+func registerClusterModule(api gin.IRouter, db *gorm.DB) {
+	repository := cluster.NewMySQLRepository(db)
+	service := cluster.NewService(repository)
+	handler := cluster.NewHandler(service)
+	cluster.RegisterRoutes(api, handler)
+}
+
+func ensureBootstrapAdmin(cfg config.Config, db *gorm.DB) {
+	repository := user.NewMySQLRepository(db)
+	passwordHasher := auth.NewPasswordHasher()
+	if err := user.EnsureBootstrapAdmin(context.Background(), repository, passwordHasher, user.BootstrapAdminOptions{
 		Enabled:     cfg.Auth.BootstrapAdmin.Enabled,
 		Username:    cfg.Auth.BootstrapAdmin.Username,
 		Password:    cfg.Auth.BootstrapAdmin.Password,
@@ -84,20 +118,12 @@ func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB) {
 	}); err != nil {
 		log.Printf("bootstrap admin skipped: %v", err)
 	}
+}
 
-	authService := auth.NewService(userRepository, passwordHasher, tokenManager)
-	authHandler := auth.NewHandler(authService)
-
-	userService := user.NewService(userRepository, passwordHasher)
-	userHandler := user.NewHandler(userService)
-
-	// publicAPI 放不需要登录的接口，例如登录。
-	publicAPI := api
-
-	// privateAPI 挂载鉴权中间件，后续后台管理接口默认放在这里。
-	privateAPI := api.Group("")
-	privateAPI.Use(middleware.Auth(tokenManager))
-
-	auth.RegisterRoutes(publicAPI, privateAPI, authHandler)
-	user.RegisterRoutes(privateAPI, userHandler)
+func newTokenManager(cfg config.Config) auth.TokenManager {
+	return auth.NewTokenManager(auth.TokenOptions{
+		Secret:         cfg.Auth.JWT.Secret,
+		Issuer:         cfg.Auth.JWT.Issuer,
+		AccessTokenTTL: time.Duration(cfg.Auth.JWT.AccessTokenTTLSeconds) * time.Second,
+	})
 }
