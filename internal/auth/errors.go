@@ -10,6 +10,7 @@ var (
 	ErrPermissionDenied  = errors.New("permission denied")
 	ErrPasswordMismatch  = errors.New("password mismatch")
 	ErrPasswordTooWeak   = errors.New("password too weak")
+	ErrSessionNotFound   = errors.New("session not found")
 )
 
 // IsAuthError 判断 err 是否为认证模块已知业务错误。
@@ -20,7 +21,8 @@ func IsAuthError(err error) bool {
 		errors.Is(err, ErrTokenExpired) ||
 		errors.Is(err, ErrPermissionDenied) ||
 		errors.Is(err, ErrPasswordMismatch) ||
-		errors.Is(err, ErrPasswordTooWeak)
+		errors.Is(err, ErrPasswordTooWeak) ||
+		errors.Is(err, ErrSessionNotFound)
 }
 
 // ErrorMessage 把认证模块内部错误转换成可以返回给前端的提示。
@@ -40,6 +42,8 @@ func ErrorMessage(err error) string {
 		return "password confirmation does not match"
 	case errors.Is(err, ErrPasswordTooWeak):
 		return "password is too weak"
+	case errors.Is(err, ErrSessionNotFound):
+		return "session not found"
 	default:
 		return "authentication failed"
 	}

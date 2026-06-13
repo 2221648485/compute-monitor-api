@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"compute-monitor-api/internal/app"
 	"compute-monitor-api/internal/config"
 	"compute-monitor-api/internal/store/mysql"
+	redisstore "compute-monitor-api/internal/store/redis"
 )
 
 // @title Compute Monitor API
@@ -41,7 +43,23 @@ func main() {
 		}()
 	}
 
-	router := app.NewRouter(cfg, db)
+	redisClient, err := redisstore.New(context.Background(), redisstore.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	if err != nil {
+		log.Printf("redis init failed, auth api will not be available: %v", err)
+	}
+	if redisClient != nil {
+		defer func() {
+			if err := redisstore.Close(redisClient); err != nil {
+				log.Printf("redis close failed: %v", err)
+			}
+		}()
+	}
+
+	router := app.NewRouter(cfg, db, redisClient)
 	if err := router.Run(":" + cfg.App.Port); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}

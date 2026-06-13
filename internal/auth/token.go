@@ -32,14 +32,15 @@ type TokenClaims struct {
 	Username     string
 	Role         string
 	TokenVersion int
+	SessionID    string
 	TokenType    string
 	ExpiresAt    time.Time
 }
 
 // TokenManager 定义 JWT 签发和解析能力。
 type TokenManager interface {
-	Generate(ctx context.Context, user userpkg.User) (string, int64, error)
-	GenerateRefresh(ctx context.Context, user userpkg.User) (string, int64, error)
+	Generate(ctx context.Context, user userpkg.User, sessionID string) (string, int64, error)
+	GenerateRefresh(ctx context.Context, user userpkg.User, sessionID string) (string, int64, error)
 	Parse(ctx context.Context, token string) (TokenClaims, error)
 	ParseRefresh(ctx context.Context, token string) (TokenClaims, error)
 }
@@ -64,6 +65,7 @@ type jwtClaims struct {
 	Username     string `json:"username"`
 	Role         string `json:"role"`
 	TokenVersion int    `json:"token_version"`
+	SessionID    string `json:"session_id"`
 	TokenType    string `json:"token_type"`
 	jwt.RegisteredClaims
 }
@@ -92,16 +94,16 @@ func NewTokenManager(opts TokenOptions) *JWTManager {
 }
 
 // Generate 签发 access token。
-func (m *JWTManager) Generate(ctx context.Context, user userpkg.User) (string, int64, error) {
-	return m.generate(ctx, user, tokenTypeAccess, m.accessTokenTTL)
+func (m *JWTManager) Generate(ctx context.Context, user userpkg.User, sessionID string) (string, int64, error) {
+	return m.generate(ctx, user, sessionID, tokenTypeAccess, m.accessTokenTTL)
 }
 
 // GenerateRefresh 签发 refresh token。
-func (m *JWTManager) GenerateRefresh(ctx context.Context, user userpkg.User) (string, int64, error) {
-	return m.generate(ctx, user, tokenTypeRefresh, m.refreshTokenTTL)
+func (m *JWTManager) GenerateRefresh(ctx context.Context, user userpkg.User, sessionID string) (string, int64, error) {
+	return m.generate(ctx, user, sessionID, tokenTypeRefresh, m.refreshTokenTTL)
 }
 
-func (m *JWTManager) generate(ctx context.Context, user userpkg.User, tokenType string, ttl time.Duration) (string, int64, error) {
+func (m *JWTManager) generate(ctx context.Context, user userpkg.User, sessionID string, tokenType string, ttl time.Duration) (string, int64, error) {
 	_ = ctx
 	now := m.now()
 	expiresAt := now.Add(ttl)
@@ -110,6 +112,7 @@ func (m *JWTManager) generate(ctx context.Context, user userpkg.User, tokenType 
 		Username:     user.Username,
 		Role:         user.Role,
 		TokenVersion: user.TokenVersion,
+		SessionID:    sessionID,
 		TokenType:    tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    m.issuer,
@@ -167,14 +170,15 @@ func (m *JWTManager) parse(ctx context.Context, rawToken string, expectedType st
 		Username:     claims.Username,
 		Role:         claims.Role,
 		TokenVersion: claims.TokenVersion,
+		SessionID:    claims.SessionID,
 		TokenType:    claims.TokenType,
 		ExpiresAt:    expiresAt,
 	}, nil
 }
 
 // GenerateToken 是函数式调用风格的便捷包装。
-func GenerateToken(ctx context.Context, manager TokenManager, user userpkg.User) (string, int64, error) {
-	return manager.Generate(ctx, user)
+func GenerateToken(ctx context.Context, manager TokenManager, user userpkg.User, sessionID string) (string, int64, error) {
+	return manager.Generate(ctx, user, sessionID)
 }
 
 // ParseToken 是函数式调用风格的便捷包装。

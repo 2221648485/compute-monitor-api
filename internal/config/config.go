@@ -14,6 +14,7 @@ const defaultEnv = "dev"
 type Config struct {
 	App      AppConfig      `mapstructure:"app"`
 	Database DatabaseConfig `mapstructure:"mysql"`
+	Redis    RedisConfig    `mapstructure:"redis"`
 	Auth     AuthConfig     `mapstructure:"auth"`
 }
 
@@ -26,6 +27,12 @@ type DatabaseConfig struct {
 	DSN          string `mapstructure:"dsn"`
 	MaxOpenConns int    `mapstructure:"max_open_conns"`
 	MaxIdleConns int    `mapstructure:"max_idle_conns"`
+}
+
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
 
 type AuthConfig struct {
@@ -118,6 +125,9 @@ func newViper() *viper.Viper {
 	v.SetDefault("mysql.dsn", "root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local")
 	v.SetDefault("mysql.max_open_conns", 20)
 	v.SetDefault("mysql.max_idle_conns", 10)
+	v.SetDefault("redis.addr", "127.0.0.1:6379")
+	v.SetDefault("redis.password", "")
+	v.SetDefault("redis.db", 0)
 	v.SetDefault("auth.jwt.secret", "change-me")
 	v.SetDefault("auth.jwt.issuer", "compute-monitor-api")
 	v.SetDefault("auth.jwt.access_token_ttl_seconds", 7200)
@@ -143,6 +153,10 @@ func defaultConfig() Config {
 			DSN:          "root:123456@tcp(127.0.0.1:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local",
 			MaxOpenConns: 20,
 			MaxIdleConns: 10,
+		},
+		Redis: RedisConfig{
+			Addr: "127.0.0.1:6379",
+			DB:   0,
 		},
 		Auth: AuthConfig{
 			JWT: JWTConfig{

@@ -68,7 +68,7 @@ func (h *Handler) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.RefreshToken(c.Request.Context(), req)
+	result, err := h.service.RefreshToken(c.Request.Context(), req, c.ClientIP(), c.Request.UserAgent())
 	if err != nil {
 		writeAuthError(c, err)
 		return

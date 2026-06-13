@@ -4,29 +4,34 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	userpkg "compute-monitor-api/internal/user"
 
 	"gorm.io/gorm"
 )
 
-// Service 负责认证业务逻辑，包含登录、当前用户和修改密码。
+// Service 负责认证业务逻辑，包含登录、当前用户、修改密码和刷新 token。
 type Service struct {
 	repository     UserRepository
 	passwordHasher PasswordHasher
 	tokenManager   TokenManager
+	sessionStore   SessionStore
+	refreshTTL     time.Duration
 }
 
 // NewService 创建认证服务。
-func NewService(repository UserRepository, passwordHasher PasswordHasher, tokenManager TokenManager) *Service {
+func NewService(repository UserRepository, passwordHasher PasswordHasher, tokenManager TokenManager, sessionStore SessionStore, refreshTTL time.Duration) *Service {
 	return &Service{
 		repository:     repository,
 		passwordHasher: passwordHasher,
 		tokenManager:   tokenManager,
+		sessionStore:   sessionStore,
+		refreshTTL:     refreshTTL,
 	}
 }
 
-// Login 校验用户名密码，签发 JWT，并记录登录日志。
+// Login 校验用户名密码，创建 Redis 会话，签发 access token 和 refresh token，并记录登录日志。
 func (s *Service) Login(ctx context.Context, req LoginRequest, ip string, userAgent string) (LoginResponse, error) {
 	username := strings.TrimSpace(req.Username)
 	user, err := s.repository.FindByUsername(ctx, username)
@@ -47,14 +52,21 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string, userAg
 		return LoginResponse{}, ErrInvalidCredential
 	}
 
-	token, expiresIn, err := s.tokenManager.Generate(ctx, user)
+	session, err := s.sessionStore.Create(ctx, user, s.refreshTTL, ip, userAgent)
 	if err != nil {
 		return LoginResponse{}, err
 	}
-	refreshToken, refreshExpiresIn, err := s.tokenManager.GenerateRefresh(ctx, user)
+	token, expiresIn, err := s.tokenManager.Generate(ctx, user, session.SessionID)
 	if err != nil {
+		_ = s.sessionStore.Delete(ctx, session.SessionID)
 		return LoginResponse{}, err
 	}
+	refreshToken, refreshExpiresIn, err := s.tokenManager.GenerateRefresh(ctx, user, session.SessionID)
+	if err != nil {
+		_ = s.sessionStore.Delete(ctx, session.SessionID)
+		return LoginResponse{}, err
+	}
+
 	_ = s.repository.UpdateLastLoginAt(ctx, user.ID)
 	s.writeLoginLog(ctx, user.ID, user.Username, ip, userAgent, true, "")
 
@@ -110,22 +122,23 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, req ChangePa
 	return s.repository.UpdatePassword(ctx, userID, passwordHash)
 }
 
-func (s *Service) writeLoginLog(ctx context.Context, userID int64, username string, ip string, userAgent string, success bool, reason string) {
-	_ = s.repository.CreateLoginLog(ctx, userpkg.LoginLog{
-		UserID:    userID,
-		Username:  username,
-		IP:        ip,
-		UserAgent: userAgent,
-		Success:   success,
-		Reason:    reason,
-	})
-}
-
 // RefreshToken 使用 refresh token 换取新的 access token 和 refresh token。
-func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (RefreshTokenResponse, error) {
+func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest, ip string, userAgent string) (RefreshTokenResponse, error) {
 	claims, err := s.tokenManager.ParseRefresh(ctx, strings.TrimSpace(req.RefreshToken))
 	if err != nil {
 		return RefreshTokenResponse{}, err
+	}
+
+	session, err := s.sessionStore.Get(ctx, claims.SessionID)
+	if err != nil {
+		if errors.Is(err, ErrSessionNotFound) {
+			return RefreshTokenResponse{}, ErrTokenInvalid
+		}
+		return RefreshTokenResponse{}, err
+	}
+	if !sameSessionIdentity(session, claims) {
+		_ = s.sessionStore.Delete(ctx, claims.SessionID)
+		return RefreshTokenResponse{}, ErrTokenInvalid
 	}
 
 	user, err := s.repository.FindByID(ctx, claims.UserID)
@@ -139,17 +152,23 @@ func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (Re
 		return RefreshTokenResponse{}, ErrUserDisabled
 	}
 	if !sameTokenIdentity(user, claims) {
+		_ = s.sessionStore.Delete(ctx, claims.SessionID)
 		return RefreshTokenResponse{}, ErrTokenInvalid
 	}
 
-	token, expiresIn, err := s.tokenManager.Generate(ctx, user)
+	newSession, err := s.sessionStore.Rotate(ctx, claims.SessionID, user, s.refreshTTL, ip, userAgent)
 	if err != nil {
 		return RefreshTokenResponse{}, err
 	}
-	refreshToken, refreshExpiresIn, err := s.tokenManager.GenerateRefresh(ctx, user)
+	token, expiresIn, err := s.tokenManager.Generate(ctx, user, newSession.SessionID)
 	if err != nil {
 		return RefreshTokenResponse{}, err
 	}
+	refreshToken, refreshExpiresIn, err := s.tokenManager.GenerateRefresh(ctx, user, newSession.SessionID)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+
 	return RefreshTokenResponse{
 		AccessToken:      token,
 		RefreshToken:     refreshToken,
@@ -159,8 +178,19 @@ func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (Re
 	}, nil
 }
 
-// ValidateAccessClaims 校验 access token 中的用户状态和 token 版本是否仍然有效。
+// ValidateAccessClaims 校验 access token 中的用户状态、token 版本和 Redis 会话是否仍然有效。
 func (s *Service) ValidateAccessClaims(ctx context.Context, claims TokenClaims) error {
+	session, err := s.sessionStore.Get(ctx, claims.SessionID)
+	if err != nil {
+		if errors.Is(err, ErrSessionNotFound) {
+			return ErrTokenInvalid
+		}
+		return err
+	}
+	if !sameSessionIdentity(session, claims) {
+		return ErrTokenInvalid
+	}
+
 	user, err := s.repository.FindByID(ctx, claims.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, userpkg.ErrUserNotFound) {
@@ -177,9 +207,28 @@ func (s *Service) ValidateAccessClaims(ctx context.Context, claims TokenClaims) 
 	return nil
 }
 
+func (s *Service) writeLoginLog(ctx context.Context, userID int64, username string, ip string, userAgent string, success bool, reason string) {
+	_ = s.repository.CreateLoginLog(ctx, userpkg.LoginLog{
+		UserID:    userID,
+		Username:  username,
+		IP:        ip,
+		UserAgent: userAgent,
+		Success:   success,
+		Reason:    reason,
+	})
+}
+
 func sameTokenIdentity(user userpkg.User, claims TokenClaims) bool {
 	return user.ID == claims.UserID &&
 		user.Username == claims.Username &&
 		user.Role == claims.Role &&
 		user.TokenVersion == claims.TokenVersion
+}
+
+func sameSessionIdentity(session RefreshSession, claims TokenClaims) bool {
+	return session.SessionID == claims.SessionID &&
+		session.UserID == claims.UserID &&
+		session.Username == claims.Username &&
+		session.Role == claims.Role &&
+		session.TokenVersion == claims.TokenVersion
 }

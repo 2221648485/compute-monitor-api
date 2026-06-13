@@ -16,13 +16,14 @@ import (
 	"compute-monitor-api/internal/user"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 )
 
 // NewRouter 创建 HTTP 路由，并在这里完成各业务模块的依赖组装。
-func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
+func NewRouter(cfg config.Config, db *gorm.DB, redisClient *redis.Client) *gin.Engine {
 	router := gin.Default()
 	router.Use(middleware.RequestLog())
 
@@ -45,7 +46,7 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 
 	// /api/admin 是后台管理接口，包含认证、用户管理、集群管理等后台能力。
 	adminAPI := router.Group("/api/admin")
-	registerAdminModules(adminAPI, cfg, db)
+	registerAdminModules(adminAPI, cfg, db, redisClient)
 
 	return router
 }
@@ -55,12 +56,12 @@ func registerCompatModules(api gin.IRouter) {
 	compat.RegisterRoutes(api, compatHandler)
 }
 
-func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB) {
-	if db == nil {
+func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB, redisClient *redis.Client) {
+	if db == nil || redisClient == nil {
 		api.Any("/*path", func(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, response.Body{
 				Code:    http.StatusServiceUnavailable,
-				Message: "database is not available",
+				Message: "database or redis is not available",
 			})
 		})
 		return
@@ -71,7 +72,8 @@ func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB) {
 	userRepository := user.NewMySQLRepository(db)
 	passwordHasher := auth.NewPasswordHasher()
 	tokenManager := newTokenManager(cfg)
-	authService := auth.NewService(userRepository, passwordHasher, tokenManager)
+	sessionStore := auth.NewRedisSessionStore(redisClient)
+	authService := auth.NewService(userRepository, passwordHasher, tokenManager, sessionStore, refreshTokenTTL(cfg))
 
 	// publicAPI 放不需要登录的接口，例如登录和 refresh token 换签。
 	publicAPI := api
@@ -131,4 +133,12 @@ func newTokenManager(cfg config.Config) auth.TokenManager {
 		AccessTokenTTL:  time.Duration(cfg.Auth.JWT.AccessTokenTTLSeconds) * time.Second,
 		RefreshTokenTTL: time.Duration(cfg.Auth.JWT.RefreshTokenTTLSeconds) * time.Second,
 	})
+}
+
+func refreshTokenTTL(cfg config.Config) time.Duration {
+	ttl := time.Duration(cfg.Auth.JWT.RefreshTokenTTLSeconds) * time.Second
+	if ttl <= 0 {
+		return 7 * 24 * time.Hour
+	}
+	return ttl
 }
