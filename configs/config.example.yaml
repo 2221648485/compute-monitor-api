@@ -12,6 +12,7 @@ auth:
     secret: change-me
     issuer: compute-monitor-api
     access_token_ttl_seconds: 7200
+    refresh_token_ttl_seconds: 604800
   bootstrap_admin:
     enabled: true
     username: admin

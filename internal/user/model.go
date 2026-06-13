@@ -23,6 +23,7 @@ type User struct {
 	Phone        string     `gorm:"column:phone;type:varchar(32)" json:"phone"`
 	Role         string     `gorm:"column:role;type:varchar(32);not null" json:"role"`
 	Status       int        `gorm:"column:status;not null" json:"status"`
+	TokenVersion int        `gorm:"column:token_version;not null;default:1" json:"-"`
 	LastLoginAt  *time.Time `gorm:"column:last_login_at" json:"last_login_at,omitempty"`
 	CreatedAt    time.Time  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt    time.Time  `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`

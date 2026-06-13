@@ -65,6 +65,7 @@ func (s *Service) Create(ctx context.Context, req CreateUserRequest) (User, erro
 		Phone:        strings.TrimSpace(req.Phone),
 		Role:         strings.TrimSpace(req.Role),
 		Status:       req.Status,
+		TokenVersion: 1,
 	}
 	return s.repository.Create(ctx, user)
 }

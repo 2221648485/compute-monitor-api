@@ -51,14 +51,20 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string, userAg
 	if err != nil {
 		return LoginResponse{}, err
 	}
+	refreshToken, refreshExpiresIn, err := s.tokenManager.GenerateRefresh(ctx, user)
+	if err != nil {
+		return LoginResponse{}, err
+	}
 	_ = s.repository.UpdateLastLoginAt(ctx, user.ID)
 	s.writeLoginLog(ctx, user.ID, user.Username, ip, userAgent, true, "")
 
 	return LoginResponse{
-		AccessToken: token,
-		TokenType:   "Bearer",
-		ExpiresIn:   expiresIn,
-		User:        userpkg.ToResponse(user),
+		AccessToken:      token,
+		RefreshToken:     refreshToken,
+		TokenType:        "Bearer",
+		ExpiresIn:        expiresIn,
+		RefreshExpiresIn: refreshExpiresIn,
+		User:             userpkg.ToResponse(user),
 	}, nil
 }
 
@@ -115,8 +121,14 @@ func (s *Service) writeLoginLog(ctx context.Context, userID int64, username stri
 	})
 }
 
-func (s *Service) RefreshToken(ctx context.Context, userID int64) (RefreshTokenResponse, error) {
-	user, err := s.repository.FindByID(ctx, userID)
+// RefreshToken 使用 refresh token 换取新的 access token 和 refresh token。
+func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (RefreshTokenResponse, error) {
+	claims, err := s.tokenManager.ParseRefresh(ctx, strings.TrimSpace(req.RefreshToken))
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
+
+	user, err := s.repository.FindByID(ctx, claims.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, userpkg.ErrUserNotFound) {
 			return RefreshTokenResponse{}, ErrInvalidCredential
@@ -126,14 +138,48 @@ func (s *Service) RefreshToken(ctx context.Context, userID int64) (RefreshTokenR
 	if !user.IsEnabled() {
 		return RefreshTokenResponse{}, ErrUserDisabled
 	}
+	if !sameTokenIdentity(user, claims) {
+		return RefreshTokenResponse{}, ErrTokenInvalid
+	}
 
 	token, expiresIn, err := s.tokenManager.Generate(ctx, user)
 	if err != nil {
 		return RefreshTokenResponse{}, err
 	}
+	refreshToken, refreshExpiresIn, err := s.tokenManager.GenerateRefresh(ctx, user)
+	if err != nil {
+		return RefreshTokenResponse{}, err
+	}
 	return RefreshTokenResponse{
-		AccessToken: token,
-		TokenType:   "Bearer",
-		ExpiresIn:   expiresIn,
+		AccessToken:      token,
+		RefreshToken:     refreshToken,
+		TokenType:        "Bearer",
+		ExpiresIn:        expiresIn,
+		RefreshExpiresIn: refreshExpiresIn,
 	}, nil
+}
+
+// ValidateAccessClaims 校验 access token 中的用户状态和 token 版本是否仍然有效。
+func (s *Service) ValidateAccessClaims(ctx context.Context, claims TokenClaims) error {
+	user, err := s.repository.FindByID(ctx, claims.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, userpkg.ErrUserNotFound) {
+			return ErrTokenInvalid
+		}
+		return err
+	}
+	if !user.IsEnabled() {
+		return ErrUserDisabled
+	}
+	if !sameTokenIdentity(user, claims) {
+		return ErrTokenInvalid
+	}
+	return nil
+}
+
+func sameTokenIdentity(user userpkg.User, claims TokenClaims) bool {
+	return user.ID == claims.UserID &&
+		user.Username == claims.Username &&
+		user.Role == claims.Role &&
+		user.TokenVersion == claims.TokenVersion
 }

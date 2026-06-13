@@ -49,6 +49,34 @@ func (h *Handler) Login(c *gin.Context) {
 	response.OK(c, result)
 }
 
+// RefreshToken 使用 refresh token 换取新的 token。
+//
+// @Summary 刷新 token
+// @Tags 认证
+// @Accept json
+// @Produce json
+// @Param request body RefreshTokenRequest true "刷新 token 请求"
+// @Success 200 {object} response.Body
+// @Failure 400 {object} response.Body
+// @Failure 401 {object} response.Body
+// @Failure 500 {object} response.Body
+// @Router /api/admin/auth/refresh [post]
+func (h *Handler) RefreshToken(c *gin.Context) {
+	var req RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.service.RefreshToken(c.Request.Context(), req)
+	if err != nil {
+		writeAuthError(c, err)
+		return
+	}
+
+	response.OK(c, result)
+}
+
 // GetCurrentUser 查询当前登录用户。
 //
 // @Summary 查询当前登录用户
@@ -72,30 +100,6 @@ func (h *Handler) GetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, result)
-}
-
-// RefreshToken 刷新当前登录用户 token。
-//
-// @Summary 刷新 token
-// @Tags 认证
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} response.Body
-// @Failure 401 {object} response.Body
-// @Failure 500 {object} response.Body
-// @Router /api/admin/auth/refresh [post]
-func (h *Handler) RefreshToken(c *gin.Context) {
-	userID, ok := requestctx.CurrentUserID(c)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, response.Body{Code: http.StatusUnauthorized, Message: ErrorMessage(ErrTokenInvalid)})
-		return
-	}
-	result, err := h.service.RefreshToken(c.Request.Context(), userID)
-	if err != nil {
-		writeAuthError(c, err)
-		return
-	}
 	response.OK(c, result)
 }
 

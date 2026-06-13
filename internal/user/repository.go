@@ -118,7 +118,11 @@ func (r *MySQLRepository) UpdateStatus(ctx context.Context, id int64, status int
 
 // UpdatePassword 修改用户密码哈希。
 func (r *MySQLRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
-	result := r.db.WithContext(ctx).Model(&User{}).Where("id = ?", id).Update("password_hash", passwordHash)
+	updates := map[string]interface{}{
+		"password_hash": passwordHash,
+		"token_version": gorm.Expr("token_version + 1"),
+	}
+	result := r.db.WithContext(ctx).Model(&User{}).Where("id = ?", id).Updates(updates)
 	if result.Error != nil {
 		return result.Error
 	}

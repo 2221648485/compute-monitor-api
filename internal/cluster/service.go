@@ -14,12 +14,16 @@ import (
 
 // Service 负责集群管理业务逻辑。
 type Service struct {
-	repository Repository
+	repository       Repository
+	deleteRepository DeleteRepository
 }
 
 // NewService 创建集群服务。
-func NewService(repository Repository) *Service {
-	return &Service{repository: repository}
+func NewService(repository Repository, deleteRepository DeleteRepository) *Service {
+	return &Service{
+		repository:       repository,
+		deleteRepository: deleteRepository,
+	}
 }
 
 // Create 创建集群配置。
@@ -127,7 +131,7 @@ func (s *Service) Delete(ctx context.Context, clusterID string) error {
 	if clusterID == "" {
 		return ErrClusterIDRequired
 	}
-	if err := s.repository.Delete(ctx, clusterID); err != nil {
+	if err := s.deleteRepository.Delete(ctx, clusterID); err != nil {
 		return normalizeRecordNotFound(err)
 	}
 	return nil

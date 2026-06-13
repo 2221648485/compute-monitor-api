@@ -74,6 +74,7 @@ func EnsureBootstrapAdmin(ctx context.Context, repository Repository, hasher Pas
 		Email:        strings.TrimSpace(opts.Email),
 		Role:         role,
 		Status:       status,
+		TokenVersion: 1,
 	})
 	return err
 }

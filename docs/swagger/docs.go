@@ -160,10 +160,8 @@ const docTemplate = `{
         },
         "/api/admin/auth/refresh": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
+                "consumes": [
+                    "application/json"
                 ],
                 "produces": [
                     "application/json"
@@ -172,9 +170,26 @@ const docTemplate = `{
                     "认证"
                 ],
                 "summary": "刷新 token",
+                "parameters": [
+                    {
+                        "description": "刷新 token 请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshTokenRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Body"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.Body"
                         }
@@ -958,6 +973,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
                     "type": "string"
                 }
             }

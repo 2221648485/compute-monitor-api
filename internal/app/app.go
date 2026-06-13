@@ -39,11 +39,11 @@ func NewRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
-	// /api/v2 是调度器兼容接口，当前阶段先返回 mock 数据。
+	// /api/v2 是调度器兼容接口，当前阶段先保留原有兼容模块。
 	compatAPI := router.Group("/api/v2")
 	registerCompatModules(compatAPI)
 
-	// /api/admin 是后台管理接口，包含认证、用户管理等后台能力。
+	// /api/admin 是后台管理接口，包含认证、用户管理、集群管理等后台能力。
 	adminAPI := router.Group("/api/admin")
 	registerAdminModules(adminAPI, cfg, db)
 
@@ -68,30 +68,33 @@ func registerAdminModules(api gin.IRouter, cfg config.Config, db *gorm.DB) {
 
 	ensureBootstrapAdmin(cfg, db)
 
-	// publicAPI 放不需要登录的接口，例如登录。
-	publicAPI := api
-
-	// privateAPI 挂载鉴权中间件，后续后台管理接口默认放在这里。
-	privateAPI := api.Group("")
-	privateAPI.Use(middleware.Auth(newTokenManager(cfg)))
-
-	registerAuthModule(publicAPI, privateAPI, cfg, db)
-	registerUserModule(privateAPI, db)
-	registerClusterModule(privateAPI, db)
-}
-
-func registerAuthModule(publicAPI gin.IRouter, privateAPI gin.IRouter, cfg config.Config, db *gorm.DB) {
-	repository := user.NewMySQLRepository(db)
+	userRepository := user.NewMySQLRepository(db)
 	passwordHasher := auth.NewPasswordHasher()
 	tokenManager := newTokenManager(cfg)
-	service := auth.NewService(repository, passwordHasher, tokenManager)
+	authService := auth.NewService(userRepository, passwordHasher, tokenManager)
+
+	// publicAPI 放不需要登录的接口，例如登录和 refresh token 换签。
+	publicAPI := api
+
+	// privateAPI 只负责“是否登录”，并校验 token 是否已因改密、禁用、角色变化而失效。
+	privateAPI := api.Group("")
+	privateAPI.Use(middleware.Auth(tokenManager, authService))
+
+	// adminOnlyAPI 负责后台管理授权，普通登录用户不能管理用户和集群。
+	adminOnlyAPI := privateAPI.Group("")
+	adminOnlyAPI.Use(middleware.RequireRole(user.RoleAdmin))
+
+	registerAuthModule(publicAPI, privateAPI, authService)
+	registerUserModule(adminOnlyAPI, userRepository, passwordHasher)
+	registerClusterModule(adminOnlyAPI, db)
+}
+
+func registerAuthModule(publicAPI gin.IRouter, privateAPI gin.IRouter, service *auth.Service) {
 	handler := auth.NewHandler(service)
 	auth.RegisterRoutes(publicAPI, privateAPI, handler)
 }
 
-func registerUserModule(api gin.IRouter, db *gorm.DB) {
-	repository := user.NewMySQLRepository(db)
-	passwordHasher := auth.NewPasswordHasher()
+func registerUserModule(api gin.IRouter, repository user.Repository, passwordHasher user.PasswordHasher) {
 	service := user.NewService(repository, passwordHasher)
 	handler := user.NewHandler(service)
 	user.RegisterRoutes(api, handler)
@@ -99,7 +102,8 @@ func registerUserModule(api gin.IRouter, db *gorm.DB) {
 
 func registerClusterModule(api gin.IRouter, db *gorm.DB) {
 	repository := cluster.NewMySQLRepository(db)
-	service := cluster.NewService(repository)
+	deleteRepository := cluster.NewMySQLDeleteRepository(db)
+	service := cluster.NewService(repository, deleteRepository)
 	handler := cluster.NewHandler(service)
 	cluster.RegisterRoutes(api, handler)
 }
@@ -122,8 +126,9 @@ func ensureBootstrapAdmin(cfg config.Config, db *gorm.DB) {
 
 func newTokenManager(cfg config.Config) auth.TokenManager {
 	return auth.NewTokenManager(auth.TokenOptions{
-		Secret:         cfg.Auth.JWT.Secret,
-		Issuer:         cfg.Auth.JWT.Issuer,
-		AccessTokenTTL: time.Duration(cfg.Auth.JWT.AccessTokenTTLSeconds) * time.Second,
+		Secret:          cfg.Auth.JWT.Secret,
+		Issuer:          cfg.Auth.JWT.Issuer,
+		AccessTokenTTL:  time.Duration(cfg.Auth.JWT.AccessTokenTTLSeconds) * time.Second,
+		RefreshTokenTTL: time.Duration(cfg.Auth.JWT.RefreshTokenTTLSeconds) * time.Second,
 	})
 }

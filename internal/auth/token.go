@@ -10,42 +10,61 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const defaultAccessTokenTTL = 2 * time.Hour
+const (
+	defaultAccessTokenTTL  = 2 * time.Hour
+	defaultRefreshTokenTTL = 7 * 24 * time.Hour
+
+	tokenTypeAccess  = "access"
+	tokenTypeRefresh = "refresh"
+)
 
 // TokenOptions 配置 JWT 签名信息和 token 有效期。
 type TokenOptions struct {
-	Secret         string
-	Issuer         string
-	AccessTokenTTL time.Duration
+	Secret          string
+	Issuer          string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
 }
 
 // TokenClaims 是 token 解析后得到的用户身份信息。
 type TokenClaims struct {
-	UserID    int64
-	Username  string
-	Role      string
-	ExpiresAt time.Time
+	UserID       int64
+	Username     string
+	Role         string
+	TokenVersion int
+	TokenType    string
+	ExpiresAt    time.Time
 }
 
 // TokenManager 定义 JWT 签发和解析能力。
 type TokenManager interface {
 	Generate(ctx context.Context, user userpkg.User) (string, int64, error)
+	GenerateRefresh(ctx context.Context, user userpkg.User) (string, int64, error)
 	Parse(ctx context.Context, token string) (TokenClaims, error)
+	ParseRefresh(ctx context.Context, token string) (TokenClaims, error)
 }
 
-// JWTManager 负责签发和解析 HS256 JWT access token。
+// TokenValidator 定义 access token 通过签名校验后，还需要到业务侧校验的能力。
+type TokenValidator interface {
+	ValidateAccessClaims(ctx context.Context, claims TokenClaims) error
+}
+
+// JWTManager 负责签发和解析 HS256 JWT。
 type JWTManager struct {
-	secret         []byte
-	issuer         string
-	accessTokenTTL time.Duration
-	now            func() time.Time
+	secret          []byte
+	issuer          string
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
+	now             func() time.Time
 }
 
 // jwtClaims 是真正写入 JWT 的载荷结构。
 type jwtClaims struct {
-	UserID   int64  `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID       int64  `json:"user_id"`
+	Username     string `json:"username"`
+	Role         string `json:"role"`
+	TokenVersion int    `json:"token_version"`
+	TokenType    string `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
@@ -60,23 +79,38 @@ func NewTokenManager(opts TokenOptions) *JWTManager {
 	if opts.AccessTokenTTL <= 0 {
 		opts.AccessTokenTTL = defaultAccessTokenTTL
 	}
+	if opts.RefreshTokenTTL <= 0 {
+		opts.RefreshTokenTTL = defaultRefreshTokenTTL
+	}
 	return &JWTManager{
-		secret:         []byte(opts.Secret),
-		issuer:         opts.Issuer,
-		accessTokenTTL: opts.AccessTokenTTL,
-		now:            time.Now,
+		secret:          []byte(opts.Secret),
+		issuer:          opts.Issuer,
+		accessTokenTTL:  opts.AccessTokenTTL,
+		refreshTokenTTL: opts.RefreshTokenTTL,
+		now:             time.Now,
 	}
 }
 
-// Generate 签发 JWT，并返回 token 字符串和过期秒数。
+// Generate 签发 access token。
 func (m *JWTManager) Generate(ctx context.Context, user userpkg.User) (string, int64, error) {
+	return m.generate(ctx, user, tokenTypeAccess, m.accessTokenTTL)
+}
+
+// GenerateRefresh 签发 refresh token。
+func (m *JWTManager) GenerateRefresh(ctx context.Context, user userpkg.User) (string, int64, error) {
+	return m.generate(ctx, user, tokenTypeRefresh, m.refreshTokenTTL)
+}
+
+func (m *JWTManager) generate(ctx context.Context, user userpkg.User, tokenType string, ttl time.Duration) (string, int64, error) {
 	_ = ctx
 	now := m.now()
-	expiresAt := now.Add(m.accessTokenTTL)
+	expiresAt := now.Add(ttl)
 	claims := jwtClaims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Role:     user.Role,
+		UserID:       user.ID,
+		Username:     user.Username,
+		Role:         user.Role,
+		TokenVersion: user.TokenVersion,
+		TokenType:    tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    m.issuer,
 			Subject:   user.Username,
@@ -91,11 +125,20 @@ func (m *JWTManager) Generate(ctx context.Context, user userpkg.User) (string, i
 		return "", 0, err
 	}
 
-	return signed, int64(m.accessTokenTTL.Seconds()), nil
+	return signed, int64(ttl.Seconds()), nil
 }
 
-// Parse 校验 token 签名、签发方和过期时间。
+// Parse 校验 access token 的签名、签发方、类型和过期时间。
 func (m *JWTManager) Parse(ctx context.Context, rawToken string) (TokenClaims, error) {
+	return m.parse(ctx, rawToken, tokenTypeAccess)
+}
+
+// ParseRefresh 校验 refresh token 的签名、签发方、类型和过期时间。
+func (m *JWTManager) ParseRefresh(ctx context.Context, rawToken string) (TokenClaims, error) {
+	return m.parse(ctx, rawToken, tokenTypeRefresh)
+}
+
+func (m *JWTManager) parse(ctx context.Context, rawToken string, expectedType string) (TokenClaims, error) {
 	_ = ctx
 	claims := &jwtClaims{}
 	token, err := jwt.ParseWithClaims(rawToken, claims, func(token *jwt.Token) (interface{}, error) {
@@ -110,7 +153,7 @@ func (m *JWTManager) Parse(ctx context.Context, rawToken string) (TokenClaims, e
 		}
 		return TokenClaims{}, ErrTokenInvalid
 	}
-	if token == nil || !token.Valid {
+	if token == nil || !token.Valid || claims.TokenType != expectedType {
 		return TokenClaims{}, ErrTokenInvalid
 	}
 
@@ -120,10 +163,12 @@ func (m *JWTManager) Parse(ctx context.Context, rawToken string) (TokenClaims, e
 	}
 
 	return TokenClaims{
-		UserID:    claims.UserID,
-		Username:  claims.Username,
-		Role:      claims.Role,
-		ExpiresAt: expiresAt,
+		UserID:       claims.UserID,
+		Username:     claims.Username,
+		Role:         claims.Role,
+		TokenVersion: claims.TokenVersion,
+		TokenType:    claims.TokenType,
+		ExpiresAt:    expiresAt,
 	}, nil
 }
 

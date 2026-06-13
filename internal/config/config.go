@@ -34,9 +34,10 @@ type AuthConfig struct {
 }
 
 type JWTConfig struct {
-	Secret                string `mapstructure:"secret"`
-	Issuer                string `mapstructure:"issuer"`
-	AccessTokenTTLSeconds int64  `mapstructure:"access_token_ttl_seconds"`
+	Secret                 string `mapstructure:"secret"`
+	Issuer                 string `mapstructure:"issuer"`
+	AccessTokenTTLSeconds  int64  `mapstructure:"access_token_ttl_seconds"`
+	RefreshTokenTTLSeconds int64  `mapstructure:"refresh_token_ttl_seconds"`
 }
 
 type BootstrapAdminConfig struct {
@@ -120,6 +121,7 @@ func newViper() *viper.Viper {
 	v.SetDefault("auth.jwt.secret", "change-me")
 	v.SetDefault("auth.jwt.issuer", "compute-monitor-api")
 	v.SetDefault("auth.jwt.access_token_ttl_seconds", 7200)
+	v.SetDefault("auth.jwt.refresh_token_ttl_seconds", 604800)
 	v.SetDefault("auth.bootstrap_admin.enabled", true)
 	v.SetDefault("auth.bootstrap_admin.username", "admin")
 	v.SetDefault("auth.bootstrap_admin.password", "Admin@123456")
@@ -144,9 +146,10 @@ func defaultConfig() Config {
 		},
 		Auth: AuthConfig{
 			JWT: JWTConfig{
-				Secret:                "change-me",
-				Issuer:                "compute-monitor-api",
-				AccessTokenTTLSeconds: 7200,
+				Secret:                 "change-me",
+				Issuer:                 "compute-monitor-api",
+				AccessTokenTTLSeconds:  7200,
+				RefreshTokenTTLSeconds: 604800,
 			},
 			BootstrapAdmin: BootstrapAdminConfig{
 				Enabled:     true,

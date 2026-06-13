@@ -4,27 +4,25 @@ import (
 	"context"
 	"strings"
 
-	"compute-monitor-api/internal/alert"
-	"compute-monitor-api/internal/audit"
-	"compute-monitor-api/internal/k8s"
-	"compute-monitor-api/internal/metrics"
 	"compute-monitor-api/internal/page"
 
 	"gorm.io/gorm"
 )
 
+// Repository 定义集群配置的基础数据访问能力。
 type Repository interface {
 	Create(ctx context.Context, cluster Cluster) (Cluster, error)
 	Update(ctx context.Context, cluster Cluster) (Cluster, error)
 	List(ctx context.Context, query ListQuery) ([]Cluster, int64, error)
 	Get(ctx context.Context, clusterID string) (Cluster, error)
-	Delete(ctx context.Context, clusterID string) error
 }
 
+// MySQLRepository 是基于 GORM 的 MySQL 集群配置仓储实现。
 type MySQLRepository struct {
 	db *gorm.DB
 }
 
+// NewMySQLRepository 创建 MySQL 集群配置仓储。
 func NewMySQLRepository(db *gorm.DB) *MySQLRepository {
 	return &MySQLRepository{db: db}
 }
@@ -74,7 +72,7 @@ func (r *MySQLRepository) List(ctx context.Context, query ListQuery) ([]Cluster,
 		Find(&records).Error; err != nil {
 		return nil, 0, err
 	}
-	// 转换为DTO
+
 	result := make([]Cluster, 0, len(records))
 	for _, item := range records {
 		result = append(result, item.ToDTO())
@@ -89,42 +87,6 @@ func (r *MySQLRepository) Get(ctx context.Context, clusterID string) (Cluster, e
 		return Cluster{}, err
 	}
 	return record.ToDTO(), nil
-}
-
-// Delete 删除集群配置及关联缓存数据。
-func (r *MySQLRepository) Delete(ctx context.Context, clusterID string) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return r.deleteClusterInTransaction(tx, clusterID)
-	})
-}
-
-func (r *MySQLRepository) deleteClusterInTransaction(tx *gorm.DB, clusterID string) error {
-	var count int64
-	if err := tx.Model(&Record{}).Where("id = ?", clusterID).Count(&count).Error; err != nil {
-		return err
-	}
-	if count == 0 {
-		return gorm.ErrRecordNotFound
-	}
-
-	relatedRecords := []any{
-		&k8s.NamespaceRecord{},
-		&k8s.NodeRecord{},
-		&k8s.PodRecord{},
-		&k8s.DeploymentRecord{},
-		&k8s.ServiceRecord{},
-		&metrics.PointRecord{},
-		&alert.RuleRecord{},
-		&alert.EventRecord{},
-		&audit.LogRecord{},
-	}
-	for _, record := range relatedRecords {
-		if err := tx.Where("cluster_id = ?", clusterID).Delete(record).Error; err != nil {
-			return err
-		}
-	}
-
-	return tx.Delete(&Record{}, "id = ?", clusterID).Error
 }
 
 func applyListQuery(db *gorm.DB, query ListQuery) *gorm.DB {

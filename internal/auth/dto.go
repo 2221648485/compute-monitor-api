@@ -10,17 +10,26 @@ type LoginRequest struct {
 
 // LoginResponse 是登录成功后返回给前端的 token 和当前用户信息。
 type LoginResponse struct {
-	AccessToken string               `json:"access_token"`
-	TokenType   string               `json:"token_type"`
-	ExpiresIn   int64                `json:"expires_in"`
-	User        userpkg.UserResponse `json:"user"`
+	AccessToken      string               `json:"access_token"`
+	RefreshToken     string               `json:"refresh_token"`
+	TokenType        string               `json:"token_type"`
+	ExpiresIn        int64                `json:"expires_in"`
+	RefreshExpiresIn int64                `json:"refresh_expires_in"`
+	User             userpkg.UserResponse `json:"user"`
+}
+
+// RefreshTokenRequest 是使用 refresh token 换取新 token 的请求体。
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 // RefreshTokenResponse 是刷新 token 的响应体。
 type RefreshTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int64  `json:"expires_in"`
+	AccessToken      string `json:"access_token"`
+	RefreshToken     string `json:"refresh_token"`
+	TokenType        string `json:"token_type"`
+	ExpiresIn        int64  `json:"expires_in"`
+	RefreshExpiresIn int64  `json:"refresh_expires_in"`
 }
 
 // ChangePasswordRequest 是当前登录用户修改自己密码的请求体。

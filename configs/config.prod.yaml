@@ -12,6 +12,7 @@ auth:
     secret: change-this-prod-secret
     issuer: compute-monitor-api
     access_token_ttl_seconds: 7200
+    refresh_token_ttl_seconds: 604800
   bootstrap_admin:
     enabled: false
     username: admin

@@ -21,7 +21,7 @@ const (
 )
 
 // Auth 校验 Authorization: Bearer <token>，并把用户身份写入上下文。
-func Auth(tokenManager auth.TokenManager) gin.HandlerFunc {
+func Auth(tokenManager auth.TokenManager, validators ...auth.TokenValidator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		rawToken := bearerToken(c.GetHeader("Authorization"))
 		if rawToken == "" {
@@ -41,6 +41,19 @@ func Auth(tokenManager auth.TokenManager) gin.HandlerFunc {
 			})
 			c.Abort()
 			return
+		}
+		for _, validator := range validators {
+			if validator == nil {
+				continue
+			}
+			if err := validator.ValidateAccessClaims(c.Request.Context(), claims); err != nil {
+				c.JSON(http.StatusUnauthorized, response.Body{
+					Code:    http.StatusUnauthorized,
+					Message: auth.ErrorMessage(err),
+				})
+				c.Abort()
+				return
+			}
 		}
 
 		c.Set(ContextUserIDKey, claims.UserID)

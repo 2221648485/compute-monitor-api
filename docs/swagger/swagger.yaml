@@ -25,6 +25,13 @@ definitions:
     - password
     - username
     type: object
+  auth.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
   cluster.CreateClusterRequest:
     properties:
       description:
@@ -227,11 +234,24 @@ paths:
       - 认证
   /api/admin/auth/refresh:
     post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 刷新 token 请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.Body'
         "401":
@@ -242,8 +262,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.Body'
-      security:
-      - BearerAuth: []
       summary: 刷新 token
       tags:
       - 认证
