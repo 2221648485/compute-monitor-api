@@ -1,5 +1,7 @@
 package page
 
+import "gorm.io/gorm"
+
 const (
 	defaultPage = 1
 	defaultSize = 20
@@ -39,6 +41,13 @@ func Normalize(query Query) Query {
 func Offset(query Query) int {
 	query = Normalize(query)
 	return (query.Page - 1) * query.Size
+}
+
+// Apply 给 GORM 查询追加分页条件。
+// Count 统计总数时不要调用 Apply，只在查询当前页数据时调用。
+func Apply(db *gorm.DB, query Query) *gorm.DB {
+	query = Normalize(query)
+	return db.Offset(Offset(query)).Limit(query.Size)
 }
 
 // NewResult 创建统一分页返回结构。

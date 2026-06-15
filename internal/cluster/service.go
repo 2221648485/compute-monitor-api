@@ -189,11 +189,15 @@ func validatePrometheusURL(rawURL string) error {
 	return nil
 }
 
-func newK8sClientForCluster(cluster Cluster) (*k8s.Client, error) {
-	if cluster.KubeconfigPath != "" {
-		return k8s.NewClientFromKubeconfig(cluster.KubeconfigPath)
+func newK8sClientForCluster(cluster Cluster) (k8s.Client, error) {
+	opts := k8s.Options{
+		Mode:           "in_cluster",
+		KubeconfigPath: cluster.KubeconfigPath,
 	}
-	return k8s.NewInClusterClient()
+	if cluster.KubeconfigPath != "" {
+		opts.Mode = "kubeconfig"
+	}
+	return k8s.NewClient(opts)
 }
 
 func normalizeRecordNotFound(err error) error {

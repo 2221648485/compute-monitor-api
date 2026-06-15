@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /src
@@ -14,10 +12,13 @@ ENV CGO_ENABLED=0 \
     GOSUMDB=${GOSUMDB}
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY . .
-RUN go build -trimpath -ldflags="-s -w" -o /out/compute-monitor-api ./cmd/server
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath -ldflags="-s -w" -o /out/compute-monitor-api ./cmd/server
 
 FROM alpine:3.22
 

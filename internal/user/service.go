@@ -5,13 +5,9 @@ import (
 	"errors"
 	"strings"
 
-	"gorm.io/gorm"
-)
+	"compute-monitor-api/internal/page"
 
-const (
-	defaultPage = 1
-	defaultSize = 20
-	maxSize     = 100
+	"gorm.io/gorm"
 )
 
 // PasswordHasher 是用户服务需要的密码哈希能力，由 auth.BcryptPasswordHasher 实现。
@@ -81,13 +77,12 @@ func (s *Service) GetByID(ctx context.Context, id int64) (User, error) {
 
 // List 分页查询用户列表。
 func (s *Service) List(ctx context.Context, req UserListRequest) (UserListResponse, error) {
-	page, size := normalizePagination(req.Page, req.Size)
+	pageQuery := page.Normalize(page.Query{Page: req.Page, Size: req.Size})
 	query := ListQuery{
 		Keyword: strings.TrimSpace(req.Keyword),
 		Role:    strings.TrimSpace(req.Role),
 		Status:  req.Status,
-		Offset:  (page - 1) * size,
-		Limit:   size,
+		Page:    pageQuery,
 	}
 
 	items, err := s.repository.List(ctx, query)
@@ -102,8 +97,8 @@ func (s *Service) List(ctx context.Context, req UserListRequest) (UserListRespon
 	return UserListResponse{
 		Items: ToResponses(items),
 		Total: total,
-		Page:  page,
-		Size:  size,
+		Page:  pageQuery.Page,
+		Size:  pageQuery.Size,
 	}, nil
 }
 
@@ -180,17 +175,4 @@ func validatePassword(password string) error {
 		return ErrPasswordTooWeak
 	}
 	return nil
-}
-
-func normalizePagination(page int, size int) (int, int) {
-	if page <= 0 {
-		page = defaultPage
-	}
-	if size <= 0 {
-		size = defaultSize
-	}
-	if size > maxSize {
-		size = maxSize
-	}
-	return page, size
 }

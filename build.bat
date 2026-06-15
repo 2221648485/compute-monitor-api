@@ -11,6 +11,7 @@ set "DEPLOY_DIR=%ROOT_DIR%\deploy"
 set "IMAGE_DIR=%DEPLOY_DIR%\images"
 set "IMAGE_TAR=%IMAGE_DIR%\%IMAGE_NAME%-%IMAGE_VERSION%.tar"
 set "COMPOSE_FILE=%ROOT_DIR%\deployments\docker-compose\docker-compose.yml"
+set "DOCKER_BUILDKIT=1"
 
 if not exist "%ROOT_DIR%\go.mod" goto bad_root
 if not exist "%ROOT_DIR%\Dockerfile" goto bad_root
@@ -24,7 +25,7 @@ echo.
 pushd "%ROOT_DIR%"
 
 echo [STEP] docker build %IMAGE_TAG%
-call docker build -t "%IMAGE_TAG%" .
+call docker build --progress=plain -t "%IMAGE_TAG%" .
 if errorlevel 1 goto fail_pop
 
 echo.

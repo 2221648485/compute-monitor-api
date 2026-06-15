@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"compute-monitor-api/internal/page"
+
 	"gorm.io/gorm"
 )
 
@@ -13,8 +15,7 @@ type ListQuery struct {
 	Keyword string
 	Role    string
 	Status  *int
-	Offset  int
-	Limit   int
+	Page    page.Query
 }
 
 // Repository 定义用户领域需要的数据访问能力，service 只依赖接口，不直接依赖 GORM。
@@ -71,9 +72,7 @@ func (r *MySQLRepository) FindByUsername(ctx context.Context, username string) (
 func (r *MySQLRepository) List(ctx context.Context, query ListQuery) ([]User, error) {
 	var users []User
 	db := applyListQuery(r.db.WithContext(ctx).Model(&User{}), query)
-	if query.Limit > 0 {
-		db = db.Offset(query.Offset).Limit(query.Limit)
-	}
+	db = page.Apply(db, query.Page)
 	if err := db.Order("id DESC").Find(&users).Error; err != nil {
 		return nil, err
 	}

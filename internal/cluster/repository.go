@@ -57,19 +57,14 @@ func (r *MySQLRepository) Update(ctx context.Context, cluster Cluster) (Cluster,
 
 // List 分页查询集群列表。
 func (r *MySQLRepository) List(ctx context.Context, query ListQuery) ([]Cluster, int64, error) {
-	query.Query = page.Normalize(query.Query)
-
 	db := applyListQuery(r.db.WithContext(ctx).Model(&Record{}), query)
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	var records []Record
-	if err := db.
-		Order("id ASC").
-		Offset(page.Offset(query.Query)).
-		Limit(query.Size).
-		Find(&records).Error; err != nil {
+	db = page.Apply(db, query.Query)
+	if err := db.Order("id ASC").Find(&records).Error; err != nil {
 		return nil, 0, err
 	}
 

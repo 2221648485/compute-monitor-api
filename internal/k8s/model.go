@@ -14,6 +14,22 @@ type NamespaceRecord struct {
 
 func (NamespaceRecord) TableName() string { return "k8s_namespaces" }
 
+func NewNamespaceRecord(clusterID string, item Namespace) NamespaceRecord {
+	return NamespaceRecord{ClusterID: clusterID, Name: item.Name, Status: item.Status}
+}
+
+func NewNamespaceRecords(clusterID string, items []Namespace) []NamespaceRecord {
+	records := make([]NamespaceRecord, 0, len(items))
+	for _, item := range items {
+		records = append(records, NewNamespaceRecord(clusterID, item))
+	}
+	return records
+}
+
+func (r NamespaceRecord) ToDTO() Namespace {
+	return Namespace{Name: r.Name, Status: r.Status}
+}
+
 // NodeRecord 是 Node 的数据库缓存表。
 type NodeRecord struct {
 	ID                  int64     `gorm:"primaryKey;autoIncrement"`
@@ -34,8 +50,43 @@ type NodeRecord struct {
 
 func (NodeRecord) TableName() string { return "k8s_nodes" }
 
+func NewNodeRecord(clusterID string, item Node) NodeRecord {
+	return NodeRecord{
+		ClusterID:           clusterID,
+		Name:                item.Name,
+		InternalIP:          item.InternalIP,
+		Status:              item.Status,
+		RolesJSON:           mustJSON(item.Roles),
+		CPUCapacity:         item.CPUCapacity,
+		MemoryCapacityBytes: item.MemoryCapacityBytes,
+		GPUCount:            item.GPUCount,
+		OSImage:             item.OSImage,
+		KernelVersion:       item.KernelVersion,
+		ContainerRuntime:    item.ContainerRuntime,
+	}
+}
+
+func NewNodeRecords(clusterID string, items []Node) []NodeRecord {
+	records := make([]NodeRecord, 0, len(items))
+	for _, item := range items {
+		records = append(records, NewNodeRecord(clusterID, item))
+	}
+	return records
+}
+
 func (r NodeRecord) ToDTO() Node {
-	return Node{Name: r.Name, InternalIP: r.InternalIP, Status: r.Status, Roles: parseStringSlice(r.RolesJSON), CPUCapacity: r.CPUCapacity, MemoryCapacityBytes: r.MemoryCapacityBytes, GPUCount: r.GPUCount, OSImage: r.OSImage, KernelVersion: r.KernelVersion, ContainerRuntime: r.ContainerRuntime}
+	return Node{
+		Name:                r.Name,
+		InternalIP:          r.InternalIP,
+		Status:              r.Status,
+		Roles:               parseStringSlice(r.RolesJSON),
+		CPUCapacity:         r.CPUCapacity,
+		MemoryCapacityBytes: r.MemoryCapacityBytes,
+		GPUCount:            r.GPUCount,
+		OSImage:             r.OSImage,
+		KernelVersion:       r.KernelVersion,
+		ContainerRuntime:    r.ContainerRuntime,
+	}
 }
 
 // PodRecord 是 Pod 的数据库缓存表。
@@ -54,6 +105,27 @@ type PodRecord struct {
 }
 
 func (PodRecord) TableName() string { return "k8s_pods" }
+
+func NewPodRecord(clusterID string, item Pod) PodRecord {
+	return PodRecord{
+		ClusterID:    clusterID,
+		Namespace:    item.Namespace,
+		Name:         item.Name,
+		NodeName:     item.NodeName,
+		Phase:        item.Phase,
+		PodIP:        item.PodIP,
+		HostIP:       item.HostIP,
+		RestartCount: item.RestartCount,
+	}
+}
+
+func NewPodRecords(clusterID string, items []Pod) []PodRecord {
+	records := make([]PodRecord, 0, len(items))
+	for _, item := range items {
+		records = append(records, NewPodRecord(clusterID, item))
+	}
+	return records
+}
 
 func (r PodRecord) ToDTO() Pod {
 	return Pod{Name: r.Name, Namespace: r.Namespace, NodeName: r.NodeName, Phase: r.Phase, PodIP: r.PodIP, HostIP: r.HostIP, RestartCount: r.RestartCount}
@@ -75,6 +147,26 @@ type DeploymentRecord struct {
 
 func (DeploymentRecord) TableName() string { return "k8s_deployments" }
 
+func NewDeploymentRecord(clusterID string, item Deployment) DeploymentRecord {
+	return DeploymentRecord{
+		ClusterID:         clusterID,
+		Namespace:         item.Namespace,
+		Name:              item.Name,
+		Replicas:          item.Replicas,
+		ReadyReplicas:     item.ReadyReplicas,
+		AvailableReplicas: item.AvailableReplicas,
+		LabelsJSON:        mustJSON(item.Labels),
+	}
+}
+
+func NewDeploymentRecords(clusterID string, items []Deployment) []DeploymentRecord {
+	records := make([]DeploymentRecord, 0, len(items))
+	for _, item := range items {
+		records = append(records, NewDeploymentRecord(clusterID, item))
+	}
+	return records
+}
+
 func (r DeploymentRecord) ToDTO() Deployment {
 	return Deployment{Name: r.Name, Namespace: r.Namespace, Replicas: r.Replicas, ReadyReplicas: r.ReadyReplicas, AvailableReplicas: r.AvailableReplicas, Labels: parseStringMap(r.LabelsJSON)}
 }
@@ -92,3 +184,25 @@ type ServiceRecord struct {
 }
 
 func (ServiceRecord) TableName() string { return "k8s_services" }
+
+func NewServiceRecord(clusterID string, item Service) ServiceRecord {
+	return ServiceRecord{
+		ClusterID: clusterID,
+		Namespace: item.Namespace,
+		Name:      item.Name,
+		Type:      item.Type,
+		ClusterIP: item.ClusterIP,
+	}
+}
+
+func NewServiceRecords(clusterID string, items []Service) []ServiceRecord {
+	records := make([]ServiceRecord, 0, len(items))
+	for _, item := range items {
+		records = append(records, NewServiceRecord(clusterID, item))
+	}
+	return records
+}
+
+func (r ServiceRecord) ToDTO() Service {
+	return Service{Name: r.Name, Namespace: r.Namespace, Type: r.Type, ClusterIP: r.ClusterIP}
+}
