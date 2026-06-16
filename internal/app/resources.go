@@ -30,10 +30,10 @@ func InitResources(ctx context.Context, cfg config.Config) Resources {
 		ConnMaxLifetime: 30 * time.Minute,
 	})
 	if err != nil {
-		log.Printf("mysql init failed, database api will not be available: %v", err)
+		log.Printf("app resource mysql init failed: error=%v", err)
 	} else {
 		if err := mysql.Migrate(db); err != nil {
-			log.Fatalf("mysql migrate failed: %v", err)
+			log.Fatalf("app resource mysql migrate failed: error=%v", err)
 		}
 		resources.DB = db
 	}
@@ -44,7 +44,7 @@ func InitResources(ctx context.Context, cfg config.Config) Resources {
 		DB:       cfg.Redis.DB,
 	})
 	if err != nil {
-		log.Printf("redis init failed, auth api will not be available: %v", err)
+		log.Printf("app resource redis init failed: error=%v", err)
 	} else {
 		resources.Redis = redisClient
 	}
@@ -55,9 +55,9 @@ func InitResources(ctx context.Context, cfg config.Config) Resources {
 // Close 关闭应用持有的基础设施连接。
 func (r Resources) Close() {
 	if err := mysql.Close(r.DB); err != nil {
-		log.Printf("mysql close failed: %v", err)
+		log.Printf("app resource mysql close failed: error=%v", err)
 	}
 	if err := redis.Close(r.Redis); err != nil {
-		log.Printf("redis close failed: %v", err)
+		log.Printf("app resource redis close failed: error=%v", err)
 	}
 }

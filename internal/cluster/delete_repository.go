@@ -21,7 +21,12 @@ type MySQLDeleteRepository struct {
 	db *gorm.DB
 }
 
-// NewMySQLDeleteRepository 创建集群删除仓储。
+// NewDeleteRepository 创建集群删除仓储。
+func NewDeleteRepository(db *gorm.DB) *MySQLDeleteRepository {
+	return NewMySQLDeleteRepository(db)
+}
+
+// NewMySQLDeleteRepository 创建 MySQL 集群删除仓储。
 func NewMySQLDeleteRepository(db *gorm.DB) *MySQLDeleteRepository {
 	return &MySQLDeleteRepository{db: db}
 }

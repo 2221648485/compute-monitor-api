@@ -10,6 +10,7 @@ import (
 	"compute-monitor-api/internal/compat"
 	"compute-monitor-api/internal/config"
 	"compute-monitor-api/internal/k8s"
+	"compute-monitor-api/internal/k8ssync"
 	"compute-monitor-api/internal/user"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ import (
 )
 
 // AppContext 保存 app 装配层需要复用的基础依赖和共享服务。
-// 它只在启动阶段使用，用来把 repository、service、handler 和 router 组装起来。
+// 它只在启动阶段使用，用来组装 repository、service、handler 和 router。
 type AppContext struct {
 	Config       config.Config
 	DB           *gorm.DB
@@ -30,8 +31,8 @@ type AppContext struct {
 
 // NewAppContext 创建模块注册时使用的应用上下文。
 func NewAppContext(cfg config.Config, db *gorm.DB, redisClient *redisclient.Client) *AppContext {
-	userRepository := user.NewMySQLRepository(db)
-	clusterRepository := cluster.NewMySQLRepository(db)
+	userRepository := user.NewRepository(db)
+	clusterRepository := cluster.NewRepository(db)
 	passwordHasher := auth.NewPasswordHasher()
 	tokenManager := newTokenManager(cfg)
 	sessionStore := auth.NewRedisSessionStore(redisClient)
@@ -63,7 +64,7 @@ func NewModuleRegistry(ctx *AppContext) *ModuleRegistry {
 
 // EnsureBootstrapAdmin 根据配置初始化默认管理员账号。
 func (r *ModuleRegistry) EnsureBootstrapAdmin() {
-	repository := user.NewMySQLRepository(r.ctx.DB)
+	repository := user.NewRepository(r.ctx.DB)
 	passwordHasher := auth.NewPasswordHasher()
 	cfg := r.ctx.Config.Auth.BootstrapAdmin
 
@@ -76,7 +77,7 @@ func (r *ModuleRegistry) EnsureBootstrapAdmin() {
 		Role:        cfg.Role,
 		Status:      cfg.Status,
 	}); err != nil {
-		log.Printf("bootstrap admin skipped: %v", err)
+		log.Printf("app bootstrap admin skipped: error=%v", err)
 	}
 }
 
@@ -94,7 +95,7 @@ func (r *ModuleRegistry) RegisterAuth(publicAPI gin.IRouter, privateAPI gin.IRou
 
 // RegisterUser 注册后台用户管理接口。
 func (r *ModuleRegistry) RegisterUser(api gin.IRouter) {
-	repository := user.NewMySQLRepository(r.ctx.DB)
+	repository := user.NewRepository(r.ctx.DB)
 	passwordHasher := auth.NewPasswordHasher()
 	service := user.NewService(repository, passwordHasher)
 	handler := user.NewHandler(service)
@@ -103,11 +104,19 @@ func (r *ModuleRegistry) RegisterUser(api gin.IRouter) {
 
 // RegisterCluster 注册集群配置管理接口。
 func (r *ModuleRegistry) RegisterCluster(api gin.IRouter) {
-	repository := cluster.NewMySQLRepository(r.ctx.DB)
-	deleteRepository := cluster.NewMySQLDeleteRepository(r.ctx.DB)
+	repository := cluster.NewRepository(r.ctx.DB)
+	deleteRepository := cluster.NewDeleteRepository(r.ctx.DB)
 	service := cluster.NewService(repository, deleteRepository, r.ctx.K8sFactory)
 	handler := cluster.NewHandler(service)
 	cluster.RegisterRoutes(api, handler)
+}
+
+// RegisterK8sSync 注册 Kubernetes 数据同步接口。
+func (r *ModuleRegistry) RegisterK8sSync(api gin.IRouter) {
+	repository := k8s.NewRepository(r.ctx.DB)
+	service := k8ssync.NewService(r.ctx.K8sFactory, repository)
+	handler := k8ssync.NewHandler(service)
+	k8ssync.RegisterRoutes(api, handler)
 }
 
 // newTokenManager 创建 JWT 管理器，负责 access token 和 refresh token 的签发与解析。

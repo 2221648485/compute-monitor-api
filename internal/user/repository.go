@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// ListQuery 是仓储层用户列表查询条件。
+// ListQuery 是用户仓储层的列表查询条件。
 type ListQuery struct {
 	Keyword string
 	Role    string
@@ -18,7 +18,7 @@ type ListQuery struct {
 	Page    page.Query
 }
 
-// Repository 定义用户领域需要的数据访问能力，service 只依赖接口，不直接依赖 GORM。
+// Repository 定义用户领域需要的数据访问能力。
 type Repository interface {
 	Create(ctx context.Context, user User) (User, error)
 	FindByID(ctx context.Context, id int64) (User, error)
@@ -35,6 +35,11 @@ type Repository interface {
 // MySQLRepository 是基于 GORM 的 MySQL 用户仓储实现。
 type MySQLRepository struct {
 	db *gorm.DB
+}
+
+// NewRepository 创建用户仓储。
+func NewRepository(db *gorm.DB) *MySQLRepository {
+	return NewMySQLRepository(db)
 }
 
 // NewMySQLRepository 创建 MySQL 用户仓储。
@@ -115,7 +120,7 @@ func (r *MySQLRepository) UpdateStatus(ctx context.Context, id int64, status int
 	return nil
 }
 
-// UpdatePassword 修改用户密码哈希。
+// UpdatePassword 修改用户密码哈希，并递增 token 版本使旧 token 失效。
 func (r *MySQLRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
 	updates := map[string]interface{}{
 		"password_hash": passwordHash,
@@ -143,7 +148,7 @@ func (r *MySQLRepository) UpdateLastLoginAt(ctx context.Context, id int64) error
 	return nil
 }
 
-// CreateLoginLog 写入登录日志。日志写入失败不应该阻断登录主流程，由 service 决定是否忽略错误。
+// CreateLoginLog 写入登录日志。日志失败不应该阻断登录主流程。
 func (r *MySQLRepository) CreateLoginLog(ctx context.Context, log LoginLog) error {
 	return r.db.WithContext(ctx).Create(&log).Error
 }

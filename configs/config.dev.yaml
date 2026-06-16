@@ -34,3 +34,10 @@ k8s:
 
 prometheus:
   api_server: http://127.0.0.1:9090
+
+scheduler:
+  k8s_sync:
+    enabled: true
+    interval_seconds: 60
+    timeout_seconds: 30
+    namespace: ""

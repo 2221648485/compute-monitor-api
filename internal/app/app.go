@@ -29,7 +29,7 @@ func NewRouter(cfg config.Config, db *gorm.DB, redisClient *redisclient.Client) 
 	return router
 }
 
-// registerHealthRoute 注册服务探活接口，给 Docker、K8s 或负载均衡做健康检查。
+// registerHealthRoute 注册服务探活接口，给 Docker、Kubernetes 或负载均衡使用。
 func registerHealthRoute(router *gin.Engine) {
 	router.GET("/healthz", func(c *gin.Context) {
 		response.OK(c, gin.H{
@@ -71,6 +71,7 @@ func registerModules(router *gin.Engine, appCtx *AppContext) {
 	registry.RegisterAuth(publicAPI, privateAPI)
 	registry.RegisterUser(adminOnlyAPI)
 	registry.RegisterCluster(adminOnlyAPI)
+	registry.RegisterK8sSync(adminOnlyAPI)
 }
 
 // registerUnavailableRoutes 在基础设施不可用时统一返回 503，避免启动期空指针 panic。

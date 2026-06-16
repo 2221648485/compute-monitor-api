@@ -22,6 +22,11 @@ type MySQLRepository struct {
 	db *gorm.DB
 }
 
+// NewRepository 创建集群配置仓储。
+func NewRepository(db *gorm.DB) *MySQLRepository {
+	return NewMySQLRepository(db)
+}
+
 // NewMySQLRepository 创建 MySQL 集群配置仓储。
 func NewMySQLRepository(db *gorm.DB) *MySQLRepository {
 	return &MySQLRepository{db: db}

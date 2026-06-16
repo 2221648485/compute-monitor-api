@@ -175,7 +175,7 @@ func writeClusterError(c *gin.Context, err error) {
 	case IsClusterError(err):
 		response.BadRequest(c, ErrorMessage(err))
 	default:
-		log.Printf("cluster request failed: %v", err)
+		log.Printf("cluster request failed: error=%v", err)
 		response.InternalServerError(c, "failed to process cluster request")
 	}
 }

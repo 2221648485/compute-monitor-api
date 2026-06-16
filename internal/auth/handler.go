@@ -144,7 +144,7 @@ func writeAuthError(c *gin.Context, err error) {
 	case IsAuthError(err):
 		response.BadRequest(c, ErrorMessage(err))
 	default:
-		log.Printf("authentication request failed: %v", err)
+		log.Printf("auth request failed: error=%v", err)
 		response.InternalServerError(c, "authentication request failed")
 	}
 }

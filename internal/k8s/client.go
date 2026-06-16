@@ -45,6 +45,7 @@ type Client interface {
 	ScaleDeployment(ctx context.Context, namespace string, name string, replicas int) error
 }
 
+// ClientFactory 根据 clusterID 创建对应集群的 Kubernetes 客户端。
 type ClientFactory interface {
 	ForCluster(ctx context.Context, clusterID string) (Client, error)
 }

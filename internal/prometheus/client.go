@@ -18,7 +18,7 @@ type Client interface {
 	BaseURL() string
 }
 
-// ClientFactory 根据 clusterId 创建对应集群的 Prometheus 客户端。
+// ClientFactory 根据 clusterID 创建对应集群的 Prometheus 客户端。
 type ClientFactory interface {
 	ForCluster(ctx context.Context, clusterID string) (Client, error)
 }
