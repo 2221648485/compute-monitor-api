@@ -12,10 +12,12 @@ import (
 const defaultEnv = "dev"
 
 type Config struct {
-	App      AppConfig      `mapstructure:"app"`
-	Database DatabaseConfig `mapstructure:"mysql"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Auth     AuthConfig     `mapstructure:"auth"`
+	App        AppConfig        `mapstructure:"app"`
+	Database   DatabaseConfig   `mapstructure:"mysql"`
+	Redis      RedisConfig      `mapstructure:"redis"`
+	Auth       AuthConfig       `mapstructure:"auth"`
+	K8s        K8sConfig        `mapstructure:"k8s"`
+	Prometheus PrometheusConfig `mapstructure:"prometheus"`
 }
 
 type AppConfig struct {
@@ -139,6 +141,10 @@ func newViper() *viper.Viper {
 	v.SetDefault("auth.bootstrap_admin.email", "")
 	v.SetDefault("auth.bootstrap_admin.role", "admin")
 	v.SetDefault("auth.bootstrap_admin.status", 1)
+	v.SetDefault("k8s.mode", "kubeconfig")
+	v.SetDefault("k8s.api_server", "https://127.0.0.1:6443")
+	v.SetDefault("k8s.kubeconfig_path", "configs/kubeconfig-demo.yaml")
+	v.SetDefault("prometheus.base_url", "http://127.0.0.1:9090")
 
 	return v
 }
@@ -174,5 +180,7 @@ func defaultConfig() Config {
 				Status:      1,
 			},
 		},
+		K8s:        K8sConfig{Mode: "kubeconfig", ApiServer: "https://127.0.0.1:6443", KubeconfigPath: "configs/kubeconfig-demo.yaml"},
+		Prometheus: PrometheusConfig{BaseURL: "http://127.0.0.1:9090"},
 	}
 }

@@ -16,13 +16,15 @@ import (
 type Service struct {
 	repository       Repository
 	deleteRepository DeleteRepository
+	k8sFactory       k8s.ClientFactory
 }
 
 // NewService 创建集群服务。
-func NewService(repository Repository, deleteRepository DeleteRepository) *Service {
+func NewService(repository Repository, deleteRepository DeleteRepository, k8sFactory k8s.ClientFactory) *Service {
 	return &Service{
 		repository:       repository,
 		deleteRepository: deleteRepository,
+		k8sFactory:       k8sFactory,
 	}
 }
 
@@ -104,13 +106,10 @@ func (s *Service) TestConnection(ctx context.Context, clusterID string) (map[str
 	if clusterID == "" {
 		return nil, ErrClusterIDRequired
 	}
-
-	cluster, err := s.repository.Get(ctx, clusterID)
-	if err != nil {
+	if _, err := s.repository.Get(ctx, clusterID); err != nil {
 		return nil, normalizeRecordNotFound(err)
 	}
-
-	client, err := newK8sClientForCluster(cluster)
+	client, err := s.k8sFactory.ForCluster(ctx, clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +118,7 @@ func (s *Service) TestConnection(ctx context.Context, clusterID string) (map[str
 		return nil, err
 	}
 	return map[string]interface{}{
-		"clusterId":      cluster.ID,
+		"clusterId":      clusterID,
 		"connected":      true,
 		"namespaceCount": len(namespaces),
 	}, nil

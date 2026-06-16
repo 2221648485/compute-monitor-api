@@ -19,7 +19,7 @@ type Resources struct {
 	Redis *redisclient.Client
 }
 
-// InitResources 初始化数据库、Redis 等基础设施资源。
+// InitResources 初始化 MySQL、Redis 等基础设施资源。
 func InitResources(ctx context.Context, cfg config.Config) Resources {
 	resources := Resources{}
 
