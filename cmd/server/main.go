@@ -22,6 +22,9 @@ func main() {
 	resources := app.InitResources(context.Background(), cfg)
 	defer resources.Close()
 
+	stopSchedulers := app.StartSchedulers(context.Background(), cfg, resources)
+	defer stopSchedulers()
+
 	router := app.NewRouter(cfg, resources.DB, resources.Redis)
 	if err := router.Run(":" + cfg.App.Port); err != nil {
 		log.Fatalf("server stopped: %v", err)
