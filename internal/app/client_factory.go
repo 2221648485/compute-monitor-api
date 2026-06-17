@@ -8,6 +8,7 @@ import (
 	"compute-monitor-api/internal/cluster"
 	"compute-monitor-api/internal/config"
 	"compute-monitor-api/internal/k8s"
+	"compute-monitor-api/internal/prometheus"
 )
 
 type clusterK8sClientFactory struct {
@@ -39,4 +40,27 @@ func (f *clusterK8sClientFactory) ForCluster(ctx context.Context, clusterID stri
 		KubeconfigPath: kubeconfigPath,
 	}
 	return k8s.NewClient(opts)
+}
+
+type clusterPrometheusClientFactory struct {
+	clusterRepository cluster.Repository
+}
+
+func newClusterPrometheusClientFactory(clusterRepository cluster.Repository) *clusterPrometheusClientFactory {
+	return &clusterPrometheusClientFactory{
+		clusterRepository: clusterRepository,
+	}
+}
+
+func (f *clusterPrometheusClientFactory) ForCluster(ctx context.Context, clusterID string) (prometheus.Client, error) {
+	current, err := f.clusterRepository.Get(ctx, strings.TrimSpace(clusterID))
+	if err != nil {
+		return nil, err
+	}
+
+	baseURL := strings.TrimSpace(current.PrometheusURL)
+	if baseURL == "" {
+		return nil, fmt.Errorf("cluster %s has no prometheus url", clusterID)
+	}
+	return prometheus.NewClient(baseURL), nil
 }

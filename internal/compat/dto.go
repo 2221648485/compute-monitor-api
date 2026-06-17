@@ -89,3 +89,35 @@ type NodeMetricSeries struct {
 	Unit     string        `json:"unit"`
 	Values   []MetricPoint `json:"values"`
 }
+
+// NativeCreateRequest 是兼容接口中通过 YAML 创建原生资源的请求体。
+type NativeCreateRequest struct {
+	Namespace string `json:"namespace"`
+	YAML      string `json:"yaml"`
+}
+
+// NativeCreateResponse 是 YAML 创建资源后的兼容响应。
+type NativeCreateResponse struct {
+	Kind      string `json:"kind"`
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+// AppRef 表示批量操作中的一个应用引用。
+type AppRef struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+// BatchAppsRequest 是批量启动、停止、删除应用的请求体。
+type BatchAppsRequest struct {
+	Apps []AppRef `json:"apps"`
+}
+
+// BatchAppsResponse 是批量操作结果。
+type BatchAppsResponse struct {
+	ClusterID string   `json:"clusterId"`
+	Action    string   `json:"action"`
+	Total     int      `json:"total"`
+	Items     []AppRef `json:"items"`
+}

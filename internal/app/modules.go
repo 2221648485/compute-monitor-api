@@ -11,6 +11,7 @@ import (
 	"compute-monitor-api/internal/config"
 	"compute-monitor-api/internal/k8s"
 	"compute-monitor-api/internal/k8ssync"
+	"compute-monitor-api/internal/prometheus"
 	"compute-monitor-api/internal/user"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,7 @@ type AppContext struct {
 	TokenManager auth.TokenManager
 	AuthService  *auth.Service
 	K8sFactory   k8s.ClientFactory
+	PromFactory  prometheus.ClientFactory
 }
 
 // NewAppContext 创建模块注册时使用的应用上下文。
@@ -44,6 +46,7 @@ func NewAppContext(cfg config.Config, db *gorm.DB, redisClient *redisclient.Clie
 		TokenManager: tokenManager,
 		AuthService:  auth.NewService(userRepository, passwordHasher, tokenManager, sessionStore, refreshTokenTTL(cfg)),
 		K8sFactory:   newClusterK8sClientFactory(clusterRepository, cfg.K8s),
+		PromFactory:  newClusterPrometheusClientFactory(clusterRepository),
 	}
 }
 
@@ -83,7 +86,9 @@ func (r *ModuleRegistry) EnsureBootstrapAdmin() {
 
 // RegisterCompat 注册兼容旧版前端的 /api/v2 接口。
 func (r *ModuleRegistry) RegisterCompat(api gin.IRouter) {
-	handler := compat.NewHandler()
+	k8sRepository := k8s.NewRepository(r.ctx.DB)
+	clusterRepository := cluster.NewRepository(r.ctx.DB)
+	handler := compat.NewHandler(r.ctx.K8sFactory, k8sRepository, r.ctx.PromFactory, clusterRepository)
 	compat.RegisterRoutes(api, handler)
 }
 

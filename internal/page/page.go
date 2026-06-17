@@ -11,8 +11,9 @@ const (
 // Query 是通用分页请求参数。
 // Handler 可以通过 ShouldBindQuery 直接绑定 page 和 size。
 type Query struct {
-	Page int `form:"page"`
-	Size int `form:"size"`
+	Page    int  `form:"page"`
+	Size    int  `form:"size"`
+	Disable bool `form:"-"`
 }
 
 // Result 是通用分页响应结构。
@@ -25,6 +26,9 @@ type Result[T any] struct {
 
 // Normalize 统一修正分页参数，避免每个模块重复写 page/size 兜底逻辑。
 func Normalize(query Query) Query {
+	if query.Disable {
+		return query
+	}
 	if query.Page <= 0 {
 		query.Page = defaultPage
 	}
@@ -37,6 +41,12 @@ func Normalize(query Query) Query {
 	return query
 }
 
+// All 返回不分页查询参数。
+// 这个方法只给服务内部调用使用，HTTP query 参数不能绑定出 Disable=true。
+func All() Query {
+	return Query{Disable: true}
+}
+
 // Offset 返回数据库分页偏移量。
 func Offset(query Query) int {
 	query = Normalize(query)
@@ -46,12 +56,23 @@ func Offset(query Query) int {
 // Apply 给 GORM 查询追加分页条件。
 // Count 统计总数时不要调用 Apply，只在查询当前页数据时调用。
 func Apply(db *gorm.DB, query Query) *gorm.DB {
+	if query.Disable {
+		return db
+	}
 	query = Normalize(query)
 	return db.Offset(Offset(query)).Limit(query.Size)
 }
 
 // NewResult 创建统一分页返回结构。
 func NewResult[T any](items []T, total int64, query Query) Result[T] {
+	if query.Disable {
+		return Result[T]{
+			Items: items,
+			Total: total,
+			Page:  0,
+			Size:  len(items),
+		}
+	}
 	query = Normalize(query)
 	return Result[T]{
 		Items: items,
@@ -63,6 +84,9 @@ func NewResult[T any](items []T, total int64, query Query) Result[T] {
 
 // Slice 对内存切片做分页，适合少量聚合结果或已经从其他系统读出的数据。
 func Slice[T any](items []T, query Query) Result[T] {
+	if query.Disable {
+		return NewResult(items, int64(len(items)), query)
+	}
 	query = Normalize(query)
 	total := int64(len(items))
 	offset := Offset(query)
