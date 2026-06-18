@@ -1,6 +1,10 @@
 package metrics
 
-import "time"
+import (
+	"time"
+
+	"compute-monitor-api/internal/prometheus"
+)
 
 // PointRecord 是 Prometheus 指标点缓存表。
 type PointRecord struct {
@@ -17,4 +21,26 @@ type PointRecord struct {
 // TableName 指定指标点表名。
 func (PointRecord) TableName() string {
 	return "metric_points"
+}
+
+func NewPointRecord(clusterID string, nodeName string, metric string, item prometheus.Point) PointRecord {
+	return PointRecord{
+		ClusterID: clusterID,
+		NodeName:  nodeName,
+		Metric:    metric,
+		Timestamp: item.Timestamp,
+		Value:     item.Value,
+	}
+}
+
+func NewPointRecords(clusterID string, nodeName string, metric string, points []prometheus.Point) []PointRecord {
+	records := make([]PointRecord, 0, len(points))
+	for _, item := range points {
+		records = append(records, NewPointRecord(clusterID, nodeName, metric, item))
+	}
+	return records
+}
+
+func (r PointRecord) ToDTO() prometheus.Point {
+	return prometheus.Point{Timestamp: r.Timestamp, Value: r.Value}
 }
