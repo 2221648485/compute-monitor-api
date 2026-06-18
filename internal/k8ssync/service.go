@@ -7,15 +7,6 @@ import (
 	"compute-monitor-api/internal/k8s"
 )
 
-type Result struct {
-	ClusterID   string `json:"clusterId"`
-	Namespaces  int    `json:"namespaces"`
-	Nodes       int    `json:"nodes"`
-	Pods        int    `json:"pods"`
-	Deployments int    `json:"deployments"`
-	Services    int    `json:"services"`
-}
-
 // Service 负责把 Kubernetes 当前资源同步到数据库缓存。
 type Service struct {
 	k8sFactory k8s.ClientFactory

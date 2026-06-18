@@ -179,7 +179,7 @@ func (h *Handler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, gin.H{"id": userID, "status": req.Status})
+	response.OK(c, UserStatusResponse{ID: userID, Status: req.Status})
 }
 
 // ResetPassword 重置后台用户密码。
@@ -214,7 +214,7 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, gin.H{"id": userID})
+	response.OK(c, UserIDResponse{ID: userID})
 }
 
 func parseUserID(c *gin.Context) (int64, bool) {

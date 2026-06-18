@@ -101,26 +101,26 @@ func (s *Service) Update(ctx context.Context, clusterID string, req UpdateCluste
 }
 
 // TestConnection 根据集群配置创建 client-go 客户端，并真实请求 Kubernetes API。
-func (s *Service) TestConnection(ctx context.Context, clusterID string) (map[string]interface{}, error) {
+func (s *Service) TestConnection(ctx context.Context, clusterID string) (TestConnectionResponse, error) {
 	clusterID = strings.TrimSpace(clusterID)
 	if clusterID == "" {
-		return nil, ErrClusterIDRequired
+		return TestConnectionResponse{}, ErrClusterIDRequired
 	}
 	if _, err := s.repository.Get(ctx, clusterID); err != nil {
-		return nil, normalizeRecordNotFound(err)
+		return TestConnectionResponse{}, normalizeRecordNotFound(err)
 	}
 	client, err := s.k8sFactory.ForCluster(ctx, clusterID)
 	if err != nil {
-		return nil, err
+		return TestConnectionResponse{}, err
 	}
 	namespaces, err := client.ListNamespaces(ctx)
 	if err != nil {
-		return nil, err
+		return TestConnectionResponse{}, err
 	}
-	return map[string]interface{}{
-		"clusterId":      clusterID,
-		"connected":      true,
-		"namespaceCount": len(namespaces),
+	return TestConnectionResponse{
+		ClusterID:      clusterID,
+		Connected:      true,
+		NamespaceCount: len(namespaces),
 	}, nil
 }
 

@@ -38,3 +38,8 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password" binding:"required,min=8,max=72"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
 }
+
+// IDResponse 是只需要返回当前用户 ID 的操作响应。
+type IDResponse struct {
+	ID int64 `json:"id"`
+}

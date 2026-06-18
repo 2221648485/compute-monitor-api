@@ -165,7 +165,7 @@ func (h *Handler) Delete(c *gin.Context) {
 		writeClusterError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"clusterId": clusterID, "deleted": true})
+	response.OK(c, DeleteClusterResponse{ClusterID: clusterID, Deleted: true})
 }
 
 func writeClusterError(c *gin.Context, err error) {

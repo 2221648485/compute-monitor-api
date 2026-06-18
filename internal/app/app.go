@@ -16,6 +16,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type healthResponse struct {
+	Service string `json:"service"`
+	Status  string `json:"status"`
+}
+
 // NewRouter 创建 HTTP 路由入口。
 // app 层负责全局中间件、基础路由和模块注册，不直接编写业务逻辑。
 func NewRouter(cfg config.Config, db *gorm.DB, redisClient *redisclient.Client) *gin.Engine {
@@ -32,10 +37,7 @@ func NewRouter(cfg config.Config, db *gorm.DB, redisClient *redisclient.Client) 
 // registerHealthRoute 注册服务探活接口，给 Docker、Kubernetes 或负载均衡使用。
 func registerHealthRoute(router *gin.Engine) {
 	router.GET("/healthz", func(c *gin.Context) {
-		response.OK(c, gin.H{
-			"service": "compute-monitor-api",
-			"status":  "ok",
-		})
+		response.OK(c, healthResponse{Service: "compute-monitor-api", Status: "ok"})
 	})
 }
 

@@ -27,3 +27,16 @@ type UpdateClusterRequest struct {
 	Description    string `json:"description"`
 	Status         string `json:"status"`
 }
+
+// TestConnectionResponse 是集群连接测试接口响应。
+type TestConnectionResponse struct {
+	ClusterID      string `json:"clusterId"`
+	Connected      bool   `json:"connected"`
+	NamespaceCount int    `json:"namespaceCount"`
+}
+
+// DeleteClusterResponse 是删除集群配置后的响应。
+type DeleteClusterResponse struct {
+	ClusterID string `json:"clusterId"`
+	Deleted   bool   `json:"deleted"`
+}

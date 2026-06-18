@@ -62,6 +62,17 @@ type UserListResponse struct {
 	Size  int            `json:"size"`
 }
 
+// UserIDResponse 是只返回用户 ID 的操作响应。
+type UserIDResponse struct {
+	ID int64 `json:"id"`
+}
+
+// UserStatusResponse 是修改用户状态后的操作响应。
+type UserStatusResponse struct {
+	ID     int64 `json:"id"`
+	Status int   `json:"status"`
+}
+
 // ToResponse 把数据库模型转换成接口返回模型。
 func ToResponse(u User) UserResponse {
 	return UserResponse{

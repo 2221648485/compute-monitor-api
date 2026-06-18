@@ -35,7 +35,7 @@ func (h *Handler) SyncNamespaces(c *gin.Context) {
 		writeK8sSyncError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"clusterId": c.Param("clusterId"), "namespaces": count})
+	response.OK(c, NamespacesResponse{ClusterID: c.Param("clusterId"), Namespaces: count})
 }
 
 func (h *Handler) SyncNodes(c *gin.Context) {
@@ -44,7 +44,7 @@ func (h *Handler) SyncNodes(c *gin.Context) {
 		writeK8sSyncError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"clusterId": c.Param("clusterId"), "nodes": count})
+	response.OK(c, NodesResponse{ClusterID: c.Param("clusterId"), Nodes: count})
 }
 
 func (h *Handler) SyncPods(c *gin.Context) {
@@ -53,7 +53,7 @@ func (h *Handler) SyncPods(c *gin.Context) {
 		writeK8sSyncError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"clusterId": c.Param("clusterId"), "pods": count})
+	response.OK(c, PodsResponse{ClusterID: c.Param("clusterId"), Pods: count})
 }
 
 func (h *Handler) SyncDeployments(c *gin.Context) {
@@ -62,7 +62,7 @@ func (h *Handler) SyncDeployments(c *gin.Context) {
 		writeK8sSyncError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"clusterId": c.Param("clusterId"), "deployments": count})
+	response.OK(c, DeploymentsResponse{ClusterID: c.Param("clusterId"), Deployments: count})
 }
 
 func (h *Handler) SyncServices(c *gin.Context) {
@@ -71,7 +71,7 @@ func (h *Handler) SyncServices(c *gin.Context) {
 		writeK8sSyncError(c, err)
 		return
 	}
-	response.OK(c, gin.H{"clusterId": c.Param("clusterId"), "services": count})
+	response.OK(c, ServicesResponse{ClusterID: c.Param("clusterId"), Services: count})
 }
 
 func writeK8sSyncError(c *gin.Context, err error) {

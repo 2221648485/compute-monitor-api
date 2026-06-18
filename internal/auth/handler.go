@@ -134,7 +134,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	response.OK(c, gin.H{"id": userID})
+	response.OK(c, IDResponse{ID: userID})
 }
 
 func writeAuthError(c *gin.Context, err error) {

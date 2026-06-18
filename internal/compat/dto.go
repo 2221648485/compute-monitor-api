@@ -103,6 +103,12 @@ type NativeCreateResponse struct {
 	Name      string `json:"name"`
 }
 
+// NativeDeleteResponse 是删除 Kubernetes 原生资源后的兼容响应。
+type NativeDeleteResponse struct {
+	Name    string `json:"name"`
+	Deleted bool   `json:"deleted"`
+}
+
 // AppRef 表示批量操作中的一个应用引用。
 type AppRef struct {
 	Namespace string `json:"namespace"`

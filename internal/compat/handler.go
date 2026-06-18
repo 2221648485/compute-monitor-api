@@ -229,7 +229,7 @@ func (h *Handler) DeleteDeployment(c *gin.Context) {
 		response.InternalServerError(c, err.Error())
 		return
 	}
-	response.OK(c, gin.H{"name": c.Param("name"), "deleted": true})
+	response.OK(c, NativeDeleteResponse{Name: c.Param("name"), Deleted: true})
 }
 
 func (h *Handler) BatchStartApps(c *gin.Context) { h.batchScale(c, 1) }
