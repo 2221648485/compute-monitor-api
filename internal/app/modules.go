@@ -1,6 +1,9 @@
 package app
 
 import (
+	"compute-monitor-api/internal/gpu"
+	"compute-monitor-api/internal/metrics"
+	"compute-monitor-api/internal/node"
 	"context"
 	"log"
 	"time"
@@ -122,6 +125,27 @@ func (r *ModuleRegistry) RegisterK8sSync(api gin.IRouter) {
 	service := k8ssync.NewService(r.ctx.K8sFactory, repository)
 	handler := k8ssync.NewHandler(service)
 	k8ssync.RegisterRoutes(api, handler)
+}
+
+func (r *ModuleRegistry) RegisterMetrics(api gin.IRouter) {
+	repository := metrics.NewRepository(r.ctx.DB)
+	service := metrics.NewService(r.ctx.PromFactory, repository)
+	handler := metrics.NewHandler(service)
+	metrics.RegisterRoutes(api, handler)
+}
+
+func (r *ModuleRegistry) RegisterGPU(api gin.IRouter) {
+	repository := k8s.NewRepository(r.ctx.DB)
+	service := gpu.NewService(repository, r.ctx.PromFactory)
+	handler := gpu.NewHandler(service)
+	gpu.RegisterRoutes(api, handler)
+}
+
+func (r *ModuleRegistry) RegisterNode(api gin.IRouter) {
+	repository := k8s.NewRepository(r.ctx.DB)
+	service := node.NewService(repository)
+	handler := node.NewHandler(service)
+	node.RegisterRoutes(api, handler)
 }
 
 // newTokenManager 创建 JWT 管理器，负责 access token 和 refresh token 的签发与解析。

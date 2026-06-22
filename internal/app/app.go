@@ -74,6 +74,9 @@ func registerModules(router *gin.Engine, appCtx *AppContext) {
 	registry.RegisterUser(adminOnlyAPI)
 	registry.RegisterCluster(adminOnlyAPI)
 	registry.RegisterK8sSync(adminOnlyAPI)
+	registry.RegisterMetrics(adminOnlyAPI)
+	registry.RegisterGPU(adminOnlyAPI)
+	registry.RegisterNode(adminOnlyAPI)
 }
 
 // registerUnavailableRoutes 在基础设施不可用时统一返回 503，避免启动期空指针 panic。
