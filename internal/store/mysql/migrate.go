@@ -6,6 +6,7 @@ import (
 	"compute-monitor-api/internal/cluster"
 	"compute-monitor-api/internal/k8s"
 	"compute-monitor-api/internal/metrics"
+	"compute-monitor-api/internal/migration"
 	userpkg "compute-monitor-api/internal/user"
 
 	"gorm.io/gorm"
@@ -31,5 +32,8 @@ func Migrate(db *gorm.DB) error {
 		&alert.RuleRecord{},
 		&alert.EventRecord{},
 		&audit.LogRecord{},
+		&migration.PlanRecord{},
+		&migration.TaskRecord{},
+		&migration.StepRecord{},
 	)
 }

@@ -1,21 +1,28 @@
 package app
 
 import (
-	"compute-monitor-api/internal/gpu"
-	"compute-monitor-api/internal/metrics"
-	"compute-monitor-api/internal/node"
 	"context"
 	"log"
 	"time"
 
+	"compute-monitor-api/internal/alert"
+	"compute-monitor-api/internal/audit"
 	"compute-monitor-api/internal/auth"
 	"compute-monitor-api/internal/cluster"
 	"compute-monitor-api/internal/compat"
 	"compute-monitor-api/internal/config"
+	"compute-monitor-api/internal/gpu"
+	"compute-monitor-api/internal/job"
 	"compute-monitor-api/internal/k8s"
 	"compute-monitor-api/internal/k8ssync"
+	"compute-monitor-api/internal/metrics"
+	"compute-monitor-api/internal/migration"
+	"compute-monitor-api/internal/node"
 	"compute-monitor-api/internal/prometheus"
+	"compute-monitor-api/internal/resource"
+	"compute-monitor-api/internal/server"
 	"compute-monitor-api/internal/user"
+	"compute-monitor-api/internal/workload"
 
 	"github.com/gin-gonic/gin"
 	redisclient "github.com/redis/go-redis/v9"
@@ -23,7 +30,7 @@ import (
 )
 
 // AppContext 保存 app 装配层需要复用的基础依赖和共享服务。
-// 它只在启动阶段使用，用来组装 repository、service、handler 和 router。
+// 它不是业务上下文，只在启动阶段用于组装 repository、service、handler 和 router。
 type AppContext struct {
 	Config       config.Config
 	DB           *gorm.DB
@@ -127,6 +134,23 @@ func (r *ModuleRegistry) RegisterK8sSync(api gin.IRouter) {
 	k8ssync.RegisterRoutes(api, handler)
 }
 
+// RegisterNode 注册节点查询接口，数据从数据库缓存读取。
+func (r *ModuleRegistry) RegisterNode(api gin.IRouter) {
+	repository := k8s.NewRepository(r.ctx.DB)
+	service := node.NewService(repository)
+	handler := node.NewHandler(service)
+	node.RegisterRoutes(api, handler)
+}
+
+// RegisterWorkload 注册工作负载接口。
+func (r *ModuleRegistry) RegisterWorkload(api gin.IRouter) {
+	repository := k8s.NewRepository(r.ctx.DB)
+	service := workload.NewService(r.ctx.K8sFactory, repository)
+	handler := workload.NewHandler(service)
+	workload.RegisterRoutes(api, handler)
+}
+
+// RegisterMetrics 注册监控指标接口。
 func (r *ModuleRegistry) RegisterMetrics(api gin.IRouter) {
 	repository := metrics.NewRepository(r.ctx.DB)
 	service := metrics.NewService(r.ctx.PromFactory, repository)
@@ -134,6 +158,7 @@ func (r *ModuleRegistry) RegisterMetrics(api gin.IRouter) {
 	metrics.RegisterRoutes(api, handler)
 }
 
+// RegisterGPU 注册 GPU 查询接口。
 func (r *ModuleRegistry) RegisterGPU(api gin.IRouter) {
 	repository := k8s.NewRepository(r.ctx.DB)
 	service := gpu.NewService(repository, r.ctx.PromFactory)
@@ -141,11 +166,55 @@ func (r *ModuleRegistry) RegisterGPU(api gin.IRouter) {
 	gpu.RegisterRoutes(api, handler)
 }
 
-func (r *ModuleRegistry) RegisterNode(api gin.IRouter) {
-	repository := k8s.NewRepository(r.ctx.DB)
-	service := node.NewService(repository)
-	handler := node.NewHandler(service)
-	node.RegisterRoutes(api, handler)
+// RegisterResource 注册算力、网络、存储和能源等多维资源感知接口。
+func (r *ModuleRegistry) RegisterResource(api gin.IRouter) {
+	clusterRepository := cluster.NewRepository(r.ctx.DB)
+	k8sRepository := k8s.NewRepository(r.ctx.DB)
+	service := resource.NewService(clusterRepository, k8sRepository)
+	handler := resource.NewHandler(service)
+	resource.RegisterRoutes(api, handler)
+}
+
+// RegisterMigration 注册迁移计划、迁移决策和迁移任务生命周期接口。
+func (r *ModuleRegistry) RegisterMigration(api gin.IRouter) {
+	clusterRepository := cluster.NewRepository(r.ctx.DB)
+	k8sRepository := k8s.NewRepository(r.ctx.DB)
+	resourceService := resource.NewService(clusterRepository, k8sRepository)
+	repository := migration.NewRepository(r.ctx.DB)
+	service := migration.NewService(repository, r.ctx.K8sFactory, k8sRepository, resourceService)
+	handler := migration.NewHandler(service)
+	migration.RegisterRoutes(api, handler)
+}
+
+// RegisterAlert 注册告警规则和告警事件接口。
+func (r *ModuleRegistry) RegisterAlert(api gin.IRouter) {
+	repository := alert.NewRepository(r.ctx.DB)
+	service := alert.NewService(repository)
+	handler := alert.NewHandler(service)
+	alert.RegisterRoutes(api, handler)
+}
+
+// RegisterAudit 注册审计日志接口。
+func (r *ModuleRegistry) RegisterAudit(api gin.IRouter) {
+	repository := audit.NewRepository(r.ctx.DB)
+	service := audit.NewService(repository)
+	handler := audit.NewHandler(service)
+	audit.RegisterRoutes(api, handler)
+}
+
+// RegisterJob 注册任务接口。
+func (r *ModuleRegistry) RegisterJob(api gin.IRouter) {
+	clusterRepository := cluster.NewRepository(r.ctx.DB)
+	k8sRepository := k8s.NewRepository(r.ctx.DB)
+	resourceService := resource.NewService(clusterRepository, k8sRepository)
+	migrationRepository := migration.NewRepository(r.ctx.DB)
+	migrationService := migration.NewService(migrationRepository, r.ctx.K8sFactory, k8sRepository, resourceService)
+	job.RegisterRoutes(api, job.NewHandler(migrationService))
+}
+
+// RegisterServer 注册服务器概览接口。
+func (r *ModuleRegistry) RegisterServer(api gin.IRouter) {
+	server.RegisterRoutes(api, server.NewHandler())
 }
 
 // newTokenManager 创建 JWT 管理器，负责 access token 和 refresh token 的签发与解析。

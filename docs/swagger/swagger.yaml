@@ -38,11 +38,11 @@ definitions:
         type: string
       id:
         type: string
-      kubeconfig_path:
+      kubeconfigPath:
         type: string
       name:
         type: string
-      prometheus_url:
+      prometheusURL:
         type: string
       status:
         type: string
@@ -54,16 +54,98 @@ definitions:
     properties:
       description:
         type: string
-      kubeconfig_path:
+      kubeconfigPath:
         type: string
       name:
         type: string
-      prometheus_url:
+      prometheusURL:
         type: string
       status:
         type: string
     required:
     - name
+    type: object
+  migration.Condition:
+    properties:
+      metric:
+        type: string
+      operator:
+        type: string
+      unit:
+        type: string
+      value:
+        type: number
+    type: object
+  migration.CreatePlanRequest:
+    properties:
+      conditions:
+        items:
+          $ref: '#/definitions/migration.Condition'
+        type: array
+      filters:
+        $ref: '#/definitions/migration.Filters'
+      intentType:
+        type: string
+      migrationRatio:
+        type: integer
+      sourceCluster:
+        type: string
+      sourceNode:
+        type: string
+      strategy:
+        type: string
+      targetCluster:
+        type: string
+      targetNode:
+        type: string
+      taskIds:
+        items:
+          type: string
+        type: array
+      timeWindow:
+        type: string
+    required:
+    - intentType
+    type: object
+  migration.CreateTaskRequest:
+    properties:
+      mode:
+        type: string
+      planId:
+        type: string
+    required:
+    - planId
+    type: object
+  migration.Filters:
+    properties:
+      gpuType:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      priority:
+        type: string
+    type: object
+  migration.ParseIntentRequest:
+    properties:
+      instruction:
+        type: string
+      sourceType:
+        type: string
+    required:
+    - instruction
+    type: object
+  migration.ProgressRequest:
+    properties:
+      currentStep:
+        type: string
+      message:
+        type: string
+      progressPercent:
+        type: integer
+      status:
+        type: string
     type: object
   response.Body:
     properties:
@@ -448,6 +530,118 @@ paths:
       summary: 修改集群配置
       tags:
       - 集群管理
+  /api/admin/clusters/{clusterId}/resources/compute:
+    get:
+      parameters:
+      - description: 集群 ID
+        in: path
+        name: clusterId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询算力资源
+      tags:
+      - 资源感知
+  /api/admin/clusters/{clusterId}/resources/energy:
+    get:
+      parameters:
+      - description: 集群 ID
+        in: path
+        name: clusterId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询能源资源
+      tags:
+      - 资源感知
+  /api/admin/clusters/{clusterId}/resources/network:
+    get:
+      parameters:
+      - description: 集群 ID
+        in: path
+        name: clusterId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询网络资源
+      tags:
+      - 资源感知
+  /api/admin/clusters/{clusterId}/resources/storage:
+    get:
+      parameters:
+      - description: 集群 ID
+        in: path
+        name: clusterId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询存储资源
+      tags:
+      - 资源感知
   /api/admin/clusters/{clusterId}/test:
     post:
       parameters:
@@ -480,6 +674,581 @@ paths:
       summary: 测试集群连接
       tags:
       - 集群管理
+  /api/admin/migration/intents/parse:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 迁移意图解析请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/migration.ParseIntentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 解析迁移意图
+      tags:
+      - 迁移管理
+  /api/admin/migration/plans:
+    get:
+      parameters:
+      - description: 计划状态
+        in: query
+        name: status
+        type: string
+      - description: 意图类型
+        in: query
+        name: intentType
+        type: string
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询迁移计划列表
+      tags:
+      - 迁移管理
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建迁移计划请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/migration.CreatePlanRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 创建迁移计划
+      tags:
+      - 迁移管理
+  /api/admin/migration/plans/{planId}:
+    get:
+      parameters:
+      - description: 迁移计划 ID
+        in: path
+        name: planId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询迁移计划详情
+      tags:
+      - 迁移管理
+  /api/admin/migration/plans/{planId}/feasibility:
+    post:
+      parameters:
+      - description: 迁移计划 ID
+        in: path
+        name: planId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 评估迁移可行性
+      tags:
+      - 迁移管理
+  /api/admin/migration/plans/{planId}/mode-decision:
+    post:
+      parameters:
+      - description: 迁移计划 ID
+        in: path
+        name: planId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 决策迁移模式
+      tags:
+      - 迁移管理
+  /api/admin/migration/plans/{planId}/target-optimization:
+    post:
+      parameters:
+      - description: 迁移计划 ID
+        in: path
+        name: planId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 优化迁移目标节点
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks:
+    get:
+      parameters:
+      - description: 任务状态
+        in: query
+        name: status
+        type: string
+      - description: 迁移计划 ID
+        in: query
+        name: planId
+        type: string
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询迁移任务列表
+      tags:
+      - 迁移管理
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建迁移任务请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/migration.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 创建迁移任务
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}:
+    get:
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询迁移任务详情
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}/cancel:
+    post:
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 取消迁移任务
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}/pause:
+    post:
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 暂停迁移任务
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}/progress:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: 迁移进度上报请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/migration.ProgressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 上报迁移进度
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}/resume:
+    post:
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 继续迁移任务
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}/retry:
+    post:
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 重试迁移任务
+      tags:
+      - 迁移管理
+  /api/admin/migration/tasks/{taskId}/rollback:
+    post:
+      parameters:
+      - description: 迁移任务 ID
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 回滚迁移任务
+      tags:
+      - 迁移管理
+  /api/admin/resources/overview:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Body'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Body'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Body'
+      security:
+      - BearerAuth: []
+      summary: 查询资源总览
+      tags:
+      - 资源感知
   /api/admin/users:
     get:
       parameters:

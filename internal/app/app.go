@@ -22,7 +22,7 @@ type healthResponse struct {
 }
 
 // NewRouter 创建 HTTP 路由入口。
-// app 层负责全局中间件、基础路由和模块注册，不直接编写业务逻辑。
+// app 层只负责全局中间件、基础路由和模块注册，不直接编写业务逻辑。
 func NewRouter(cfg config.Config, db *gorm.DB, redisClient *redisclient.Client) *gin.Engine {
 	router := gin.Default()
 	router.Use(middleware.RequestLog())
@@ -74,9 +74,16 @@ func registerModules(router *gin.Engine, appCtx *AppContext) {
 	registry.RegisterUser(adminOnlyAPI)
 	registry.RegisterCluster(adminOnlyAPI)
 	registry.RegisterK8sSync(adminOnlyAPI)
+	registry.RegisterNode(adminOnlyAPI)
+	registry.RegisterWorkload(adminOnlyAPI)
 	registry.RegisterMetrics(adminOnlyAPI)
 	registry.RegisterGPU(adminOnlyAPI)
-	registry.RegisterNode(adminOnlyAPI)
+	registry.RegisterResource(adminOnlyAPI)
+	registry.RegisterMigration(adminOnlyAPI)
+	registry.RegisterAlert(adminOnlyAPI)
+	registry.RegisterAudit(adminOnlyAPI)
+	registry.RegisterJob(adminOnlyAPI)
+	registry.RegisterServer(adminOnlyAPI)
 }
 
 // registerUnavailableRoutes 在基础设施不可用时统一返回 503，避免启动期空指针 panic。
