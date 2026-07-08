@@ -7,7 +7,7 @@ IMAGE_VERSION="${IMAGE_VERSION:-1.0.0}"
 IMAGE_TAG="${IMAGE_NAME}:${IMAGE_VERSION}"
 IMAGE_DIR="${ROOT_DIR}/deploy/images"
 IMAGE_TAR="${IMAGE_DIR}/${IMAGE_NAME}-${IMAGE_VERSION}.tar"
-COMPOSE_FILE="${ROOT_DIR}/deployments/docker-compose/docker-compose.yml"
+COMPOSE_FILE="${ROOT_DIR}/deployments/docker-compose/docker-compose-prod.yml"
 
 echo "======================== Start build compute-monitor-api ========================"
 echo "Root: ${ROOT_DIR}"

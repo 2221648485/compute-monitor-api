@@ -1,0 +1,76 @@
+services:
+  compute-monitor-web:
+    image: compute-monitor-web:1.0.0
+    container_name: compute-monitor-web
+    restart: unless-stopped
+    ports:
+      - "18088:80"
+    environment:
+      BACKEND_URL: http://compute-monitor-api:8080
+    depends_on:
+      compute-monitor-api:
+        condition: service_started
+    networks:
+      - compute-monitor-net
+
+  compute-monitor-api:
+    image: compute-monitor-api:1.0.0
+    container_name: compute-monitor-api
+    restart: unless-stopped
+    ports:
+      - "18099:8080"
+    environment:
+      APP_ENV: prod
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - /hdu/compute-monitor/data/api:/app/data
+    networks:
+      - compute-monitor-net
+
+  mysql:
+    image: mysql:8.0.36
+    container_name: compute-monitor-mysql
+    restart: unless-stopped
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: compute_monitor
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - /hdu/compute-monitor/data/mysql:/var/lib/mysql
+    networks:
+      - compute-monitor-net
+
+  redis:
+    image: redis:7.2.5
+    container_name: compute-monitor-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - /hdu/compute-monitor/data/redis:/data
+    networks:
+      - compute-monitor-net
+
+networks:
+  compute-monitor-net:
+    driver: bridge
+

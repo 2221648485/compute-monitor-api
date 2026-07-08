@@ -3,26 +3,42 @@ app:
   port: 8080
 
 mysql:
-  dsn: app_user:change_me@tcp(mysql:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local
-  max_open_conns: 100
-  max_idle_conns: 20
+  dsn: root:123456@tcp(compute-monitor-mysql:3306)/compute_monitor?charset=utf8mb4&parseTime=True&loc=Local
+  max_open_conns: 20
+  max_idle_conns: 10
 
 redis:
-  addr: redis:6379
+  addr: compute-monitor-redis:6379
   password: ""
   db: 0
 
 auth:
   jwt:
-    secret: change-this-prod-secret
+    secret: hdu617617617
     issuer: compute-monitor-api
     access_token_ttl_seconds: 7200
     refresh_token_ttl_seconds: 604800
   bootstrap_admin:
-    enabled: false
+    enabled: true
     username: admin
-    password: change-this-before-enable
-    display_name: 系统管理员
+    password: Admin@123456
+    display_name: System Admin
     email: admin@example.com
     role: admin
     status: 1
+
+k8s:
+  mode: kubeconfig
+  api_server: https://127.0.0.1:6443
+  kubeconfig_path: configs/kubeconfig-demo.yaml
+  kubeconfig_store_dir: data/kubeconfigs
+
+prometheus:
+  base_url: http://127.0.0.1:9090
+
+scheduler:
+  k8s_sync:
+    enabled: true
+    interval_seconds: 60
+    timeout_seconds: 30
+    namespace: ""
