@@ -13,7 +13,14 @@ type ListQuery struct {
 type CreateClusterRequest struct {
 	ID             string `json:"id" binding:"required"`
 	Name           string `json:"name" binding:"required"`
+	AccessMode     string `json:"access_mode"`
+	APIServer      string `json:"api_server"`
 	KubeconfigPath string `json:"kubeconfig_path"`
+	CACert         string `json:"ca_cert"`
+	BearerToken    string `json:"bearer_token"`
+	ClientCert     string `json:"client_cert"`
+	ClientKey      string `json:"client_key"`
+	Insecure       bool   `json:"insecure"`
 	PrometheusURL  string `json:"prometheus_url"`
 	Description    string `json:"description"`
 	Status         string `json:"status"`
@@ -22,7 +29,14 @@ type CreateClusterRequest struct {
 // UpdateClusterRequest 是修改集群的请求体。
 type UpdateClusterRequest struct {
 	Name           string `json:"name" binding:"required"`
+	AccessMode     string `json:"access_mode"`
+	APIServer      string `json:"api_server"`
 	KubeconfigPath string `json:"kubeconfig_path"`
+	CACert         string `json:"ca_cert"`
+	BearerToken    string `json:"bearer_token"`
+	ClientCert     string `json:"client_cert"`
+	ClientKey      string `json:"client_key"`
+	Insecure       bool   `json:"insecure"`
 	PrometheusURL  string `json:"prometheus_url"`
 	Description    string `json:"description"`
 	Status         string `json:"status"`

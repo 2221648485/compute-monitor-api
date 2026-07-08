@@ -69,9 +69,10 @@ type BootstrapAdminConfig struct {
 
 // K8sConfig 是 Kubernetes API 连接配置。
 type K8sConfig struct {
-	Mode           string `mapstructure:"mode"`
-	ApiServer      string `mapstructure:"api_server"`
-	KubeconfigPath string `mapstructure:"kubeconfig_path"`
+	Mode               string `mapstructure:"mode"`
+	ApiServer          string `mapstructure:"api_server"`
+	KubeconfigPath     string `mapstructure:"kubeconfig_path"`
+	KubeconfigStoreDir string `mapstructure:"kubeconfig_store_dir"`
 }
 
 // PrometheusConfig 是 Prometheus HTTP API 连接配置。
@@ -167,6 +168,7 @@ func newViper() *viper.Viper {
 	v.SetDefault("k8s.mode", "kubeconfig")
 	v.SetDefault("k8s.api_server", "https://127.0.0.1:6443")
 	v.SetDefault("k8s.kubeconfig_path", "configs/kubeconfig-demo.yaml")
+	v.SetDefault("k8s.kubeconfig_store_dir", "data/kubeconfigs")
 	v.SetDefault("prometheus.base_url", "http://127.0.0.1:9090")
 	v.SetDefault("scheduler.k8s_sync.enabled", true)
 	v.SetDefault("scheduler.k8s_sync.interval_seconds", 60)
@@ -197,7 +199,7 @@ func defaultConfig() Config {
 				Status:      1,
 			},
 		},
-		K8s:        K8sConfig{Mode: "kubeconfig", ApiServer: "https://127.0.0.1:6443", KubeconfigPath: "configs/kubeconfig-demo.yaml"},
+		K8s:        K8sConfig{Mode: "kubeconfig", ApiServer: "https://127.0.0.1:6443", KubeconfigPath: "configs/kubeconfig-demo.yaml", KubeconfigStoreDir: "data/kubeconfigs"},
 		Prometheus: PrometheusConfig{BaseURL: "http://127.0.0.1:9090"},
 		Scheduler: SchedulerConfig{
 			K8sSync: K8sSyncSchedulerConfig{

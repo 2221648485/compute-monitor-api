@@ -44,6 +44,8 @@ func (r *MySQLRepository) Create(ctx context.Context, cluster Cluster) (Cluster,
 // Update 修改集群配置。
 func (r *MySQLRepository) Update(ctx context.Context, cluster Cluster) (Cluster, error) {
 	updates := map[string]interface{}{
+		"access_mode":     cluster.AccessMode,
+		"api_server":      cluster.APIServer,
 		"name":            cluster.Name,
 		"kubeconfig_path": cluster.KubeconfigPath,
 		"prometheus_url":  cluster.PrometheusURL,

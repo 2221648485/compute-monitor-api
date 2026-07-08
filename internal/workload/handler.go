@@ -4,13 +4,12 @@ import (
 	"strconv"
 
 	"compute-monitor-api/internal/k8s"
-	"compute-monitor-api/internal/page"
 	"compute-monitor-api/internal/response"
 
 	"github.com/gin-gonic/gin"
 )
 
-// Handler 负责工作负载 HTTP 接口。
+// Handler 负责工作负载查询和操作类 HTTP 接口。
 type Handler struct {
 	service *Service
 }
@@ -19,8 +18,9 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// ListPods 分页查询 Pod 列表，支持 namespace 精确过滤和 keyword 模糊查询。
 func (h *Handler) ListPods(c *gin.Context) {
-	query, ok := bindPage(c)
+	query, ok := bindWorkloadQuery(c)
 	if !ok {
 		return
 	}
@@ -54,8 +54,9 @@ func (h *Handler) PodLogs(c *gin.Context) {
 	response.OK(c, result)
 }
 
+// ListDeployments 分页查询 Deployment 列表，支持 namespace 精确过滤和 keyword 模糊查询。
 func (h *Handler) ListDeployments(c *gin.Context) {
-	query, ok := bindPage(c)
+	query, ok := bindWorkloadQuery(c)
 	if !ok {
 		return
 	}
@@ -68,7 +69,7 @@ func (h *Handler) ListDeployments(c *gin.Context) {
 }
 
 func (h *Handler) ListServices(c *gin.Context) {
-	query, ok := bindPage(c)
+	query, ok := bindWorkloadQuery(c)
 	if !ok {
 		return
 	}
@@ -115,11 +116,11 @@ func (h *Handler) ScaleDeployment(c *gin.Context) {
 	response.OK(c, ScaleDeploymentResponse{Namespace: c.Param("namespace"), Name: c.Param("name"), Replicas: req.Replicas})
 }
 
-func bindPage(c *gin.Context) (page.Query, bool) {
-	var query page.Query
+func bindWorkloadQuery(c *gin.Context) (ListWorkloadQuery, bool) {
+	var query ListWorkloadQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
 		response.BadRequest(c, err.Error())
-		return page.Query{}, false
+		return ListWorkloadQuery{}, false
 	}
 	return query, true
 }

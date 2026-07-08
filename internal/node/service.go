@@ -36,7 +36,7 @@ func (s *Service) GetNode(ctx context.Context, clusterID string, nodeName string
 }
 
 func (s *Service) ListPods(ctx context.Context, clusterID string, namespace string, query page.Query) (page.Result[k8s.Pod], error) {
-	saved, total, err := s.repository.ListPods(ctx, clusterID, namespace, query)
+	saved, total, err := s.repository.ListPods(ctx, clusterID, namespace, "", query)
 	if err != nil {
 		return page.Result[k8s.Pod]{}, err
 	}

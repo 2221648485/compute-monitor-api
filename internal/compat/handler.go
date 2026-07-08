@@ -139,7 +139,7 @@ func (h *Handler) NodeResourceConsumption(c *gin.Context) {
 // ListApps 将 K8s Deployment 映射为调度器侧 app。
 func (h *Handler) ListApps(c *gin.Context) {
 	clusterID := c.Param("clusterId")
-	saved, _, err := h.k8sRepo.ListDeployments(c.Request.Context(), clusterID, c.Query("namespace"), compatFullPage)
+	saved, _, err := h.k8sRepo.ListDeployments(c.Request.Context(), clusterID, c.Query("namespace"), "", compatFullPage)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return
@@ -154,7 +154,7 @@ func (h *Handler) ListApps(c *gin.Context) {
 // ListInstances 将 K8s Pod 映射为调度器侧 instance。
 func (h *Handler) ListInstances(c *gin.Context) {
 	clusterID := c.Param("clusterId")
-	saved, _, err := h.k8sRepo.ListPods(c.Request.Context(), clusterID, c.Query("namespace"), compatFullPage)
+	saved, _, err := h.k8sRepo.ListPods(c.Request.Context(), clusterID, c.Query("namespace"), "", compatFullPage)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return
@@ -169,7 +169,7 @@ func (h *Handler) ListInstances(c *gin.Context) {
 // ListDeployments 返回数据库中的 Deployment 缓存。
 func (h *Handler) ListDeployments(c *gin.Context) {
 	clusterID := c.Param("clusterId")
-	result, _, err := h.k8sRepo.ListDeployments(c.Request.Context(), clusterID, c.Query("namespace"), compatFullPage)
+	result, _, err := h.k8sRepo.ListDeployments(c.Request.Context(), clusterID, c.Query("namespace"), "", compatFullPage)
 	if err != nil {
 		response.InternalServerError(c, err.Error())
 		return

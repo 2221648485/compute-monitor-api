@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"strings"
 
 	"compute-monitor-api/internal/page"
 
@@ -16,10 +17,10 @@ type Repository interface {
 	ListNodes(ctx context.Context, clusterID string, query page.Query) ([]Node, int64, error)
 	GetNode(ctx context.Context, clusterID string, name string) (Node, error)
 	SavePods(ctx context.Context, clusterID string, items []Pod) error
-	ListPods(ctx context.Context, clusterID string, namespace string, query page.Query) ([]Pod, int64, error)
+	ListPods(ctx context.Context, clusterID string, namespace string, keyword string, query page.Query) ([]Pod, int64, error)
 	GetPod(ctx context.Context, clusterID string, namespace string, name string) (Pod, error)
 	SaveDeployments(ctx context.Context, clusterID string, items []Deployment) error
-	ListDeployments(ctx context.Context, clusterID string, namespace string, query page.Query) ([]Deployment, int64, error)
+	ListDeployments(ctx context.Context, clusterID string, namespace string, keyword string, query page.Query) ([]Deployment, int64, error)
 	SaveServices(ctx context.Context, clusterID string, items []Service) error
 	ListServices(ctx context.Context, clusterID string, namespace string, query page.Query) ([]Service, int64, error)
 }
@@ -95,11 +96,15 @@ func (r *MySQLRepository) SavePods(ctx context.Context, clusterID string, items 
 	return r.upsert(ctx, &records)
 }
 
-func (r *MySQLRepository) ListPods(ctx context.Context, clusterID string, namespace string, query page.Query) ([]Pod, int64, error) {
+func (r *MySQLRepository) ListPods(ctx context.Context, clusterID string, namespace string, keyword string, query page.Query) ([]Pod, int64, error) {
 	var records []PodRecord
 	db := r.db.WithContext(ctx).Model(&PodRecord{}).Where("cluster_id = ?", clusterID)
 	if namespace != "" {
 		db = db.Where("namespace = ?", namespace)
+	}
+	if keyword = strings.TrimSpace(keyword); keyword != "" {
+		like := "%" + keyword + "%"
+		db = db.Where("name LIKE ? OR namespace LIKE ? OR node_name LIKE ? OR pod_ip LIKE ?", like, like, like, like)
 	}
 	total, err := count(db)
 	if err != nil {
@@ -129,11 +134,15 @@ func (r *MySQLRepository) SaveDeployments(ctx context.Context, clusterID string,
 	return r.upsert(ctx, &records)
 }
 
-func (r *MySQLRepository) ListDeployments(ctx context.Context, clusterID string, namespace string, query page.Query) ([]Deployment, int64, error) {
+func (r *MySQLRepository) ListDeployments(ctx context.Context, clusterID string, namespace string, keyword string, query page.Query) ([]Deployment, int64, error) {
 	var records []DeploymentRecord
 	db := r.db.WithContext(ctx).Model(&DeploymentRecord{}).Where("cluster_id = ?", clusterID)
 	if namespace != "" {
 		db = db.Where("namespace = ?", namespace)
+	}
+	if keyword = strings.TrimSpace(keyword); keyword != "" {
+		like := "%" + keyword + "%"
+		db = db.Where("name LIKE ? OR namespace LIKE ? OR labels_json LIKE ?", like, like, like)
 	}
 	total, err := count(db)
 	if err != nil {

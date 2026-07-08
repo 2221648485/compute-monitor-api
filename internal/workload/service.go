@@ -7,7 +7,7 @@ import (
 	"compute-monitor-api/internal/page"
 )
 
-// Service 负责工作负载查询和操作。
+// Service 负责工作负载查询、日志读取和 Kubernetes 原生操作。
 type Service struct {
 	k8sFactory k8s.ClientFactory
 	repository k8s.Repository
@@ -17,12 +17,13 @@ func NewService(k8sFactory k8s.ClientFactory, repository k8s.Repository) *Servic
 	return &Service{k8sFactory: k8sFactory, repository: repository}
 }
 
-func (s *Service) ListPods(ctx context.Context, clusterID string, namespace string, query page.Query) (page.Result[k8s.Pod], error) {
-	saved, total, err := s.repository.ListPods(ctx, clusterID, namespace, query)
+// ListPods 从数据库缓存读取 Pod，并按 namespace、keyword 和分页参数过滤。
+func (s *Service) ListPods(ctx context.Context, clusterID string, namespace string, query ListWorkloadQuery) (page.Result[k8s.Pod], error) {
+	saved, total, err := s.repository.ListPods(ctx, clusterID, namespace, query.Keyword, query.Query)
 	if err != nil {
 		return page.Result[k8s.Pod]{}, err
 	}
-	return page.NewResult(saved, total, query), nil
+	return page.NewResult(saved, total, query.Query), nil
 }
 
 func (s *Service) GetPod(ctx context.Context, clusterID string, namespace string, name string) (k8s.Pod, error) {
@@ -48,20 +49,21 @@ func (s *Service) PodLogs(ctx context.Context, clusterID string, namespace strin
 	}, nil
 }
 
-func (s *Service) ListDeployments(ctx context.Context, clusterID string, namespace string, query page.Query) (page.Result[k8s.Deployment], error) {
-	saved, total, err := s.repository.ListDeployments(ctx, clusterID, namespace, query)
+// ListDeployments 从数据库缓存读取 Deployment，并按 namespace、keyword 和分页参数过滤。
+func (s *Service) ListDeployments(ctx context.Context, clusterID string, namespace string, query ListWorkloadQuery) (page.Result[k8s.Deployment], error) {
+	saved, total, err := s.repository.ListDeployments(ctx, clusterID, namespace, query.Keyword, query.Query)
 	if err != nil {
 		return page.Result[k8s.Deployment]{}, err
 	}
-	return page.NewResult(saved, total, query), nil
+	return page.NewResult(saved, total, query.Query), nil
 }
 
-func (s *Service) ListServices(ctx context.Context, clusterID string, namespace string, query page.Query) (page.Result[k8s.Service], error) {
-	saved, total, err := s.repository.ListServices(ctx, clusterID, namespace, query)
+func (s *Service) ListServices(ctx context.Context, clusterID string, namespace string, query ListWorkloadQuery) (page.Result[k8s.Service], error) {
+	saved, total, err := s.repository.ListServices(ctx, clusterID, namespace, query.Query)
 	if err != nil {
 		return page.Result[k8s.Service]{}, err
 	}
-	return page.NewResult(saved, total, query), nil
+	return page.NewResult(saved, total, query.Query), nil
 }
 
 func (s *Service) ApplyYAML(ctx context.Context, clusterID string, namespace string, yamlContent string) (k8s.ApplyResult, error) {

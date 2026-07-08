@@ -3,7 +3,14 @@ package cluster
 import "time"
 
 const (
-	// StatusRunning 表示集群当前可正常连接和使用。
+	// AccessModePath 表示使用后端服务器上已经存在的 kubeconfig 文件路径接入集群。
+	AccessModePath = "path"
+	// AccessModeUpload 表示由前端上传 kubeconfig 文件，后端保存后再接入集群。
+	AccessModeUpload = "upload"
+	// AccessModeManual 表示由用户填写 API Server 和凭证，后端生成 kubeconfig 后再接入集群。
+	AccessModeManual = "manual"
+
+	// StatusRunning 表示集群配置可用。
 	StatusRunning = "Running"
 	// StatusNotReady 表示集群暂时不可用或连接异常。
 	StatusNotReady = "NotReady"
@@ -11,10 +18,12 @@ const (
 	StatusDisabled = "Disabled"
 )
 
-// Cluster 是平台管理的集群配置，对外作为接口返回模型使用。
+// Cluster 是平台纳管的 Kubernetes 集群配置。
 type Cluster struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`
+	AccessMode     string    `json:"access_mode"`
+	APIServer      string    `json:"api_server"`
 	KubeconfigPath string    `json:"kubeconfig_path"`
 	PrometheusURL  string    `json:"prometheus_url"`
 	Description    string    `json:"description"`
@@ -27,6 +36,8 @@ type Cluster struct {
 type Record struct {
 	ID             string    `gorm:"column:id;type:varchar(64);primaryKey"`
 	Name           string    `gorm:"column:name;type:varchar(128);not null"`
+	AccessMode     string    `gorm:"column:access_mode;type:varchar(32)"`
+	APIServer      string    `gorm:"column:api_server;type:varchar(255)"`
 	KubeconfigPath string    `gorm:"column:kubeconfig_path;type:varchar(255)"`
 	PrometheusURL  string    `gorm:"column:prometheus_url;type:varchar(255)"`
 	Description    string    `gorm:"column:description;type:varchar(512)"`
@@ -35,14 +46,14 @@ type Record struct {
 	UpdatedAt      time.Time `gorm:"column:updated_at;autoUpdateTime"`
 }
 
-// TableName 指定集群配置表名。
 func (Record) TableName() string { return "clusters" }
 
-// ToDTO 把数据库模型转换成接口模型。
 func (r Record) ToDTO() Cluster {
 	return Cluster{
 		ID:             r.ID,
 		Name:           r.Name,
+		AccessMode:     r.AccessMode,
+		APIServer:      r.APIServer,
 		KubeconfigPath: r.KubeconfigPath,
 		PrometheusURL:  r.PrometheusURL,
 		Description:    r.Description,
@@ -56,6 +67,8 @@ func newRecord(cluster Cluster) Record {
 	return Record{
 		ID:             cluster.ID,
 		Name:           cluster.Name,
+		AccessMode:     cluster.AccessMode,
+		APIServer:      cluster.APIServer,
 		KubeconfigPath: cluster.KubeconfigPath,
 		PrometheusURL:  cluster.PrometheusURL,
 		Description:    cluster.Description,

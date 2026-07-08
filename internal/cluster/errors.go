@@ -3,31 +3,31 @@ package cluster
 import "errors"
 
 var (
-	// ErrClusterNotFound 表示要操作的集群配置不存在。
-	ErrClusterNotFound = errors.New("cluster not found")
-	// ErrClusterExists 表示要创建的集群 ID 已经存在。
-	ErrClusterExists = errors.New("cluster already exists")
-	// ErrClusterIDRequired 表示请求中缺少集群 ID。
-	ErrClusterIDRequired = errors.New("cluster id required")
-	// ErrClusterNameRequired 表示请求中缺少集群名称。
-	ErrClusterNameRequired = errors.New("cluster name required")
-	// ErrInvalidClusterStatus 表示集群状态不在允许范围内。
+	ErrClusterNotFound      = errors.New("cluster not found")
+	ErrClusterExists        = errors.New("cluster already exists")
+	ErrClusterIDRequired    = errors.New("cluster id required")
+	ErrClusterNameRequired  = errors.New("cluster name required")
 	ErrInvalidClusterStatus = errors.New("invalid cluster status")
-	// ErrInvalidPrometheusURL 表示 Prometheus 地址格式不合法。
 	ErrInvalidPrometheusURL = errors.New("invalid prometheus url")
+	ErrInvalidAccessMode    = errors.New("invalid cluster access mode")
+	ErrKubeconfigRequired   = errors.New("cluster kubeconfig required")
+	ErrAPIServerRequired    = errors.New("cluster api server required")
+	ErrCredentialRequired   = errors.New("cluster credential required")
 )
 
-// IsClusterError 判断 err 是否是集群模块定义的业务错误。
 func IsClusterError(err error) bool {
 	return errors.Is(err, ErrClusterNotFound) ||
 		errors.Is(err, ErrClusterExists) ||
 		errors.Is(err, ErrClusterIDRequired) ||
 		errors.Is(err, ErrClusterNameRequired) ||
 		errors.Is(err, ErrInvalidClusterStatus) ||
-		errors.Is(err, ErrInvalidPrometheusURL)
+		errors.Is(err, ErrInvalidPrometheusURL) ||
+		errors.Is(err, ErrInvalidAccessMode) ||
+		errors.Is(err, ErrKubeconfigRequired) ||
+		errors.Is(err, ErrAPIServerRequired) ||
+		errors.Is(err, ErrCredentialRequired)
 }
 
-// ErrorMessage 把集群模块内部错误转换成可以返回给前端的提示。
 func ErrorMessage(err error) string {
 	switch {
 	case errors.Is(err, ErrClusterNotFound):
@@ -42,6 +42,14 @@ func ErrorMessage(err error) string {
 		return "invalid cluster status"
 	case errors.Is(err, ErrInvalidPrometheusURL):
 		return "invalid prometheus url"
+	case errors.Is(err, ErrInvalidAccessMode):
+		return "invalid cluster access mode"
+	case errors.Is(err, ErrKubeconfigRequired):
+		return "cluster kubeconfig required"
+	case errors.Is(err, ErrAPIServerRequired):
+		return "cluster api server required"
+	case errors.Is(err, ErrCredentialRequired):
+		return "cluster credential required"
 	default:
 		return "cluster operation failed"
 	}

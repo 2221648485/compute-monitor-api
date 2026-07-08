@@ -121,7 +121,7 @@ func (r *ModuleRegistry) RegisterUser(api gin.IRouter) {
 func (r *ModuleRegistry) RegisterCluster(api gin.IRouter) {
 	repository := cluster.NewRepository(r.ctx.DB)
 	deleteRepository := cluster.NewDeleteRepository(r.ctx.DB)
-	service := cluster.NewService(repository, deleteRepository, r.ctx.K8sFactory)
+	service := cluster.NewServiceWithConfig(repository, deleteRepository, r.ctx.K8sFactory, r.ctx.Config.K8s)
 	handler := cluster.NewHandler(service)
 	cluster.RegisterRoutes(api, handler)
 }

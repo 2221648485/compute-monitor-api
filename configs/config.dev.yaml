@@ -29,8 +29,9 @@ auth:
 
 k8s:
   mode: kubeconfig
-  api_server: https://127.0.0.1:6443
+  api_server: https://192.168.150.108:6443
   kubeconfig_path: configs/kubeconfig-demo.yaml
+  kubeconfig_store_dir: data/kubeconfigs
 
 prometheus:
   api_server: http://127.0.0.1:9090

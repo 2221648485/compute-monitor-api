@@ -4,6 +4,7 @@ import "github.com/gin-gonic/gin"
 
 func RegisterRoutes(api gin.IRouter, handler *Handler) {
 	api.POST("/clusters", handler.Create)
+	api.POST("/clusters/upload", handler.CreateByUpload)
 	api.GET("/clusters", handler.List)
 	api.GET("/clusters/:clusterId", handler.Get)
 	api.PUT("/clusters/:clusterId", handler.Update)

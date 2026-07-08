@@ -15,12 +15,11 @@ type Handler struct {
 	service *Service
 }
 
-// NewHandler 创建集群 handler。
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// Create 创建集群。
+// Create 创建集群配置。
 //
 // @Summary 创建集群配置
 // @Tags 集群管理
@@ -47,7 +46,48 @@ func (h *Handler) Create(c *gin.Context) {
 	response.Created(c, result)
 }
 
-// List 查询集群列表。
+// CreateByUpload 通过上传 kubeconfig 文件创建集群。
+//
+// @Summary 上传 kubeconfig 创建集群
+// @Tags 集群管理
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id formData string true "集群 ID"
+// @Param name formData string true "集群名称"
+// @Param kubeconfig formData file true "kubeconfig 文件"
+// @Param api_server formData string false "Kubernetes API Server，仅作为元数据保存，不覆盖 kubeconfig"
+// @Param prometheus_url formData string false "Prometheus 地址"
+// @Param description formData string false "集群描述"
+// @Param status formData string false "集群状态"
+// @Success 201 {object} response.Body
+// @Failure 400 {object} response.Body
+// @Failure 401 {object} response.Body
+// @Failure 500 {object} response.Body
+// @Router /api/admin/clusters/upload [post]
+func (h *Handler) CreateByUpload(c *gin.Context) {
+	file, err := c.FormFile("kubeconfig")
+	if err != nil {
+		response.BadRequest(c, ErrorMessage(ErrKubeconfigRequired))
+		return
+	}
+	req := CreateClusterRequest{
+		ID:            c.PostForm("id"),
+		Name:          c.PostForm("name"),
+		APIServer:     c.PostForm("api_server"),
+		PrometheusURL: c.PostForm("prometheus_url"),
+		Description:   c.PostForm("description"),
+		Status:        c.PostForm("status"),
+	}
+	result, err := h.service.CreateFromUpload(c.Request.Context(), req, file)
+	if err != nil {
+		writeClusterError(c, err)
+		return
+	}
+	response.Created(c, result)
+}
+
+// List 分页查询集群列表。
 //
 // @Summary 分页查询集群列表
 // @Tags 集群管理
@@ -55,8 +95,8 @@ func (h *Handler) Create(c *gin.Context) {
 // @Security BearerAuth
 // @Param keyword query string false "集群 ID、名称或描述关键字"
 // @Param status query string false "集群状态：Running/NotReady/Disabled"
-// @Param page query int false "页码，默认 1"
-// @Param size query int false "每页数量，默认 20，最大 100"
+// @Param page query int false "页码"
+// @Param size query int false "每页数量"
 // @Success 200 {object} response.Body
 // @Failure 400 {object} response.Body
 // @Failure 401 {object} response.Body
@@ -76,7 +116,7 @@ func (h *Handler) List(c *gin.Context) {
 	response.OK(c, result)
 }
 
-// Get 集群详情。
+// Get 查询集群详情。
 //
 // @Summary 查询集群详情
 // @Tags 集群管理

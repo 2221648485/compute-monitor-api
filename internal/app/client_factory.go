@@ -36,7 +36,6 @@ func (f *clusterK8sClientFactory) ForCluster(ctx context.Context, clusterID stri
 
 	opts := k8s.Options{
 		Mode:           "kubeconfig",
-		APIServer:      f.defaultConfig.ApiServer,
 		KubeconfigPath: kubeconfigPath,
 	}
 	return k8s.NewClient(opts)
