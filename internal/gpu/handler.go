@@ -83,7 +83,7 @@ func (h *Handler) Metrics(c *gin.Context) {
 
 func bindPage(c *gin.Context) (page.Query, bool) {
 	var query page.Query
-	if err := c.ShouldBindJSON(&query); err != nil {
+	if err := c.ShouldBindQuery(&query); err != nil {
 		response.BadRequest(c, err.Error())
 		return page.Query{}, false
 	}
