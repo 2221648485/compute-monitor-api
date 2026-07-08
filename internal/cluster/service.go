@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/url"
 	"os"
@@ -25,6 +26,7 @@ type Service struct {
 	deleteRepository DeleteRepository
 	k8sFactory       k8s.ClientFactory
 	k8sConfig        config.K8sConfig
+	postSaveSync     func(ctx context.Context, clusterID string) error
 }
 
 // NewService 创建集群服务。
@@ -69,7 +71,12 @@ func (s *Service) Create(ctx context.Context, req CreateClusterRequest) (Cluster
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return Cluster{}, err
 	}
-	return s.repository.Create(ctx, cluster)
+	created, err := s.repository.Create(ctx, cluster)
+	if err != nil {
+		return Cluster{}, err
+	}
+	s.syncClusterCache(ctx, created.ID)
+	return created, nil
 }
 
 // CreateFromUpload 保存上传的 kubeconfig 文件后创建集群。
@@ -102,7 +109,12 @@ func (s *Service) CreateFromUpload(ctx context.Context, req CreateClusterRequest
 	if err := s.saveUploadedKubeconfig(file, cluster.KubeconfigPath); err != nil {
 		return Cluster{}, err
 	}
-	return s.repository.Create(ctx, cluster)
+	created, err := s.repository.Create(ctx, cluster)
+	if err != nil {
+		return Cluster{}, err
+	}
+	s.syncClusterCache(ctx, created.ID)
+	return created, nil
 }
 
 // List 分页查询集群列表。
@@ -168,6 +180,7 @@ func (s *Service) Update(ctx context.Context, clusterID string, req UpdateCluste
 	if err != nil {
 		return Cluster{}, normalizeRecordNotFound(err)
 	}
+	s.syncClusterCache(ctx, updated.ID)
 	return updated, nil
 }
 
@@ -188,6 +201,7 @@ func (s *Service) TestConnection(ctx context.Context, clusterID string) (TestCon
 	if err != nil {
 		return TestConnectionResponse{}, err
 	}
+	s.syncClusterCache(ctx, clusterID)
 	return TestConnectionResponse{
 		ClusterID:      clusterID,
 		Connected:      true,
@@ -416,6 +430,23 @@ func newK8sClientForCluster(cluster Cluster) (k8s.Client, error) {
 		opts.Mode = "kubeconfig"
 	}
 	return k8s.NewClient(opts)
+}
+
+// SetPostSaveSync 注册集群保存后的资源同步回调。
+// cluster 包只持有函数，不直接依赖 k8ssync 包，避免模块之间形成循环引用。
+func (s *Service) SetPostSaveSync(sync func(ctx context.Context, clusterID string) error) {
+	s.postSaveSync = sync
+}
+
+// syncClusterCache 在集群创建、更新或连接测试后主动刷新 Kubernetes 资源缓存。
+// Pod、Deployment 和总览页面读取的是数据库缓存；如果不主动同步，新集群首次进入页面可能为空。
+func (s *Service) syncClusterCache(ctx context.Context, clusterID string) {
+	if s.postSaveSync == nil {
+		return
+	}
+	if err := s.postSaveSync(ctx, clusterID); err != nil {
+		log.Printf("cluster post-save sync skipped: clusterID=%s error=%v", clusterID, err)
+	}
 }
 
 func normalizeRecordNotFound(err error) error {

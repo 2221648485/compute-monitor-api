@@ -122,6 +122,12 @@ func (r *ModuleRegistry) RegisterCluster(api gin.IRouter) {
 	repository := cluster.NewRepository(r.ctx.DB)
 	deleteRepository := cluster.NewDeleteRepository(r.ctx.DB)
 	service := cluster.NewServiceWithConfig(repository, deleteRepository, r.ctx.K8sFactory, r.ctx.Config.K8s)
+	k8sRepository := k8s.NewRepository(r.ctx.DB)
+	k8sSyncService := k8ssync.NewService(r.ctx.K8sFactory, k8sRepository)
+	service.SetPostSaveSync(func(ctx context.Context, clusterID string) error {
+		_, err := k8sSyncService.SyncAll(ctx, clusterID, r.ctx.Config.Scheduler.K8sSync.Namespace)
+		return err
+	})
 	handler := cluster.NewHandler(service)
 	cluster.RegisterRoutes(api, handler)
 }
